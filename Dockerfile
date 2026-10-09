@@ -15,5 +15,6 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY drizzle ./drizzle
+COPY public ./public
 EXPOSE 3000
 CMD ["npm", "run", "start:prod"]

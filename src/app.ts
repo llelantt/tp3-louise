@@ -1,8 +1,10 @@
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
+import fastifyStatic from "@fastify/static";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
 import Fastify, { type FastifyError } from "fastify";
+import { fileURLToPath } from "node:url";
 import {
   hasZodFastifySchemaValidationErrors,
   jsonSchemaTransform,
@@ -134,6 +136,11 @@ export async function buildApp({ config, logger, db }: BuildAppOptions) {
 
   await app.register(stationRoutes);
   await app.register(alertRoutes);
+
+  await app.register(fastifyStatic, {
+    root: fileURLToPath(new URL("../public", import.meta.url)),
+    prefix: "/",
+  });
 
   return app;
 }

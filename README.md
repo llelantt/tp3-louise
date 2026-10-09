@@ -48,6 +48,17 @@ En service, le worker d'ingestion tourne en tâche de fond si `INGEST_ENABLED=tr
 indisponible ou corrompu est journalisé sans jamais faire tomber l'API (dernières données
 conservées). Les prix non mis à jour depuis `PRICE_STALE_AFTER_DAYS` jours passent en périmé.
 
+## Front
+
+Une interface web est servie par l'API elle-même sur http://localhost:3000/ (aucun build
+séparé). Elle permet de :
+
+- renseigner sa clé API (gardée dans le navigateur) ;
+- chercher les stations les moins chères autour d'un point (ou de sa position GPS),
+  avec carburant, rayon, litres, consommation et tri ;
+- ouvrir le détail d'une station (prix par carburant + courbe d'historique) ;
+- créer, lister et supprimer ses alertes, et consulter leurs événements.
+
 ## Vérifications
 
 ```bash
@@ -101,6 +112,7 @@ src/
   modules/{stations,alerts,auth}/  # routes, services, repositories
   ingestion/                       # job de récupération du flux open data
   lib/                             # coût, géo, erreurs, logger, clés API
+public/                            # front (HTML/CSS/JS servi par l'API)
 drizzle/                           # migrations SQL générées (PostGIS)
 test/{unit,integration}/           # Vitest
 docs/captures/                     # captures d'écran (app + chaîne d'agents)
