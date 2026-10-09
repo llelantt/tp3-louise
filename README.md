@@ -53,13 +53,21 @@ conservées). Les prix non mis à jour depuis `PRICE_STALE_AFTER_DAYS` jours pas
 ## Front
 
 Une interface web est servie par l'API elle-même sur http://localhost:3000/ (aucun build
-séparé). Elle permet de :
+séparé, modules ES natifs). Elle permet de :
 
-- renseigner sa clé API (gardée dans le navigateur) ;
-- chercher les stations les moins chères autour d'un point (ou de sa position GPS),
-  avec carburant, rayon, litres, consommation et tri ;
-- ouvrir le détail d'une station (prix par carburant + courbe d'historique) ;
-- créer, lister et supprimer ses alertes, et consulter leurs événements.
+- renseigner sa clé API (gardée dans `localStorage`, bouton « oublier ») ;
+- chercher par **ville prédéfinie**, **géolocalisation** ou **adresse** (géocodée via le
+  proxy `/v1/geocode`), avec carburant, rayon, litres, consommation et tri ;
+- rechercher automatiquement (debounce) avec annulation des requêtes obsolètes ;
+- visualiser un **plan SVG** (anneaux de distance, point « Toi », stations colorées par
+  prix, navigation clavier) synchronisé avec la liste classée par coût réel ;
+- ouvrir le **détail** d'une station (prix par carburant, badges périmé/rupture, courbe
+  d'historique) ;
+- créer, lister et supprimer ses **alertes** (confirmation) et consulter leurs événements.
+
+Le front est compatible avec la **CSP stricte** : aucun script ni style en ligne, données
+échappées, polices **auto-hébergées** (`public/fonts`, Barlow, OFL) — aucune ressource
+externe. Un test vérifie cette contrainte. Thème clair/sombre automatique (mémorisé).
 
 ## Vérifications
 
