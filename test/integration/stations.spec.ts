@@ -55,6 +55,27 @@ describe.skipIf(!databaseUrl)("GET /stations/cheapest (integration)", () => {
       ON CONFLICT (key_hash) DO NOTHING
     `);
 
+    // Zone dense : 550 stations (500 proches cheres, 50 lointaines bon marche).
+    // Objectif : verifier que la moins chere n'est jamais exclue par le LIMIT.
+    const denseStations: string[] = [];
+    const denseFuels: string[] = [];
+    for (let i = 0; i < 550; i += 1) {
+      const lat = 45 + i * 0.001;
+      const price = i < 500 ? 1.9 : 1.2;
+      denseStations.push(
+        `(${900400 + i}, 'Dense ${i}', ${lat}, 4, ST_SetSRID(ST_MakePoint(4, ${lat}), 4326))`,
+      );
+      denseFuels.push(`(${900400 + i}, 'gazole', ${price}, now())`);
+    }
+    await db.execute(
+      sql.raw(`INSERT INTO stations (id, name, lat, lon, geom) VALUES ${denseStations.join(", ")}`),
+    );
+    await db.execute(
+      sql.raw(
+        `INSERT INTO station_fuels (station_id, fuel, price, observed_at) VALUES ${denseFuels.join(", ")}`,
+      ),
+    );
+
     app = await buildApp({ config, logger: createLogger(config), db });
     await app.ready();
   });
@@ -100,5 +121,36 @@ describe.skipIf(!databaseUrl)("GET /stations/cheapest (integration)", () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.json().stations[0].id).toBe(900001);
+  });
+
+  it("zone dense : la station la moins chere n'est jamais exclue", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/stations/cheapest?lat=45&lon=4&fuel=gazole&radius_km=100&sort=total_cost&limit=20",
+      headers: { "x-api-key": API_KEY },
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.stations).toHaveLength(20);
+    expect(body.stations[0].price).toBeCloseTo(1.2, 3);
+    expect(body.truncated).toBe(true);
+  });
+
+  it("zone dense : sort=price met la moins chere au litre en tete", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/stations/cheapest?lat=45&lon=4&fuel=gazole&radius_km=100&sort=price&limit=5",
+      headers: { "x-api-key": API_KEY },
+    });
+    expect(response.json().stations[0].price).toBeCloseTo(1.2, 3);
+  });
+
+  it("zone dense : sort=distance met la plus proche en tete", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/stations/cheapest?lat=45&lon=4&fuel=gazole&radius_km=100&sort=distance&limit=5",
+      headers: { "x-api-key": API_KEY },
+    });
+    expect(response.json().stations[0].price).toBeCloseTo(1.9, 3);
   });
 });

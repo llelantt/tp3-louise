@@ -18,49 +18,46 @@ function candidate(overrides: Partial<StationCandidate>): StationCandidate {
   };
 }
 
-const options = { liters: 50, consumptionLPer100Km: 6, sort: "total_cost" as const };
+const options = {
+  liters: 50,
+  consumptionLPer100Km: 6,
+  sort: "total_cost" as const,
+  limit: 20,
+  referenceTotalCost: 100,
+};
 
 describe("rankStations", () => {
   it("retourne un tableau vide sans candidat", () => {
     expect(rankStations([], options)).toEqual([]);
   });
 
-  it("calcule le cout total et le detour de chaque station", () => {
+  it("calcule le cout total et le detour", () => {
     const [ranked] = rankStations([candidate({ price: 1.8, distanceKm: 5 })], options);
     expect(ranked?.totalCost).toBe(91.4);
     expect(ranked?.detourCost).toBe(1.4);
   });
 
-  it("donne une economie nulle a la station la plus proche", () => {
-    const ranked = rankStations(
-      [candidate({ id: 1, distanceKm: 1 }), candidate({ id: 2, distanceKm: 4 })],
-      options,
-    );
-    const nearest = ranked.find((s) => s.id === 1);
-    expect(nearest?.economyVsNearest).toBe(0);
+  it("calcule l'economie face a la reference fournie", () => {
+    const [ranked] = rankStations([candidate({ price: 2, distanceKm: 0 })], options);
+    expect(ranked?.totalCost).toBe(100);
+    expect(ranked?.economyVsNearest).toBe(0);
   });
 
-  it("donne une economie positive a une station plus loin mais moins chere", () => {
+  it("donne une economie positive a une station moins chere que la reference", () => {
+    const [ranked] = rankStations([candidate({ price: 1.5, distanceKm: 0 })], options);
+    expect(ranked?.economyVsNearest).toBe(25);
+  });
+
+  it("trie par cout total par defaut, puis distance puis id", () => {
     const ranked = rankStations(
       [
         candidate({ id: 1, distanceKm: 1, price: 2.0 }),
         candidate({ id: 2, distanceKm: 6, price: 1.7 }),
+        candidate({ id: 3, distanceKm: 6, price: 1.7 }),
       ],
       options,
     );
-    const cheaper = ranked.find((s) => s.id === 2);
-    expect(cheaper?.economyVsNearest).toBeGreaterThan(0);
-  });
-
-  it("trie par cout total par defaut", () => {
-    const ranked = rankStations(
-      [
-        candidate({ id: 1, distanceKm: 1, price: 2.0 }),
-        candidate({ id: 2, distanceKm: 6, price: 1.7 }),
-      ],
-      options,
-    );
-    expect(ranked.map((s) => s.id)).toEqual([2, 1]);
+    expect(ranked.map((s) => s.id)).toEqual([2, 3, 1]);
   });
 
   it("trie par prix au litre quand demande", () => {

@@ -13,9 +13,6 @@ import {
 } from "./schemas.js";
 import { rankStations, type RankedStation, type StationDetail } from "./service.js";
 
-const MAX_RESULTS = 20;
-const MAX_CANDIDATES = 500;
-
 function toResult(station: RankedStation): StationResult {
   return {
     id: station.id,
@@ -81,25 +78,30 @@ export const stationRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request) => {
       const query = request.query;
-      const candidates = await findCandidates(app.db, {
+      const result = await findCandidates(app.db, {
         lat: query.lat,
         lon: query.lon,
         radiusKm: query.radius_km,
         fuel: query.fuel,
-        limit: MAX_CANDIDATES,
-      });
-
-      const ranked = rankStations(candidates, {
         liters: query.liters,
         consumptionLPer100Km: query.consumption,
         sort: query.sort,
-        limit: MAX_RESULTS,
+        limit: query.limit,
+      });
+
+      const ranked = rankStations(result.candidates, {
+        liters: query.liters,
+        consumptionLPer100Km: query.consumption,
+        sort: query.sort,
+        limit: query.limit,
+        referenceTotalCost: result.referenceTotalCost ?? 0,
       });
 
       return {
         source: DATA_SOURCE,
         fuel: query.fuel,
         count: ranked.length,
+        truncated: result.totalMatches > query.limit,
         stations: ranked.map(toResult),
       };
     },

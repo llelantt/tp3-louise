@@ -13,6 +13,7 @@ export const cheapestQuerySchema = z.object({
   liters: z.coerce.number().positive().max(200).default(50),
   consumption: z.coerce.number().positive().max(30).default(6),
   sort: sortSchema.default("total_cost"),
+  limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
 export type CheapestQuery = z.infer<typeof cheapestQuerySchema>;
@@ -40,6 +41,7 @@ export const cheapestResponseSchema = z.object({
   source: z.string(),
   fuel: fuelSchema,
   count: z.number(),
+  truncated: z.boolean(),
   stations: z.array(stationResultSchema),
 });
 

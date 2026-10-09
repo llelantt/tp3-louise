@@ -23,7 +23,9 @@ export interface RankOptions {
   liters: number;
   consumptionLPer100Km: number;
   sort: SortKey;
-  limit?: number;
+  limit: number;
+  /** Cout total de la station la plus proche, fourni par la base : reference de l'economie. */
+  referenceTotalCost: number;
 }
 
 /** Une station enrichie de son cout de detour, de son cout total et de son economie. */
@@ -34,13 +36,18 @@ export interface RankedStation extends StationCandidate {
 }
 
 function compare(a: RankedStation, b: RankedStation, sort: SortKey): number {
-  if (sort === "price") return a.price - b.price || a.totalCost - b.totalCost;
-  if (sort === "distance") return a.distanceKm - b.distanceKm;
-  return a.totalCost - b.totalCost || a.distanceKm - b.distanceKm;
+  if (sort === "price") {
+    return a.price - b.price || a.distanceKm - b.distanceKm || a.id - b.id;
+  }
+  if (sort === "distance") {
+    return a.distanceKm - b.distanceKm || a.id - b.id;
+  }
+  return a.totalCost - b.totalCost || a.distanceKm - b.distanceKm || a.id - b.id;
 }
 
 /**
- * Classe des stations par cout reel, en comparant chacune a la station la plus proche.
+ * Enrichit des stations (deja triees et bornees en base) de leur cout de detour, de leur
+ * cout total et de leur economie face a la station la plus proche.
  * Fonction pure : aucun acces base ni HTTP, entierement testable.
  */
 export function rankStations(
@@ -49,32 +56,25 @@ export function rankStations(
 ): RankedStation[] {
   if (candidates.length === 0) return [];
 
-  const enriched: Omit<RankedStation, "economyVsNearest">[] = candidates.map((candidate) => {
+  const ranked: RankedStation[] = candidates.map((candidate) => {
     const input = {
       pricePerLiter: candidate.price,
       distanceKm: candidate.distanceKm,
       liters: options.liters,
       consumptionLPer100Km: options.consumptionLPer100Km,
     };
+    const total = totalCost(input);
     return {
       ...candidate,
       detourCost: round(detourCost(input)),
-      totalCost: round(totalCost(input)),
+      totalCost: round(total),
+      economyVsNearest: round(options.referenceTotalCost - total),
     };
   });
 
-  const nearest = enriched.reduce((best, current) =>
-    current.distanceKm < best.distanceKm ? current : best,
-  );
-
-  const ranked: RankedStation[] = enriched.map((station) => ({
-    ...station,
-    economyVsNearest: round(nearest.totalCost - station.totalCost),
-  }));
-
   ranked.sort((a, b) => compare(a, b, options.sort));
 
-  return options.limit !== undefined ? ranked.slice(0, options.limit) : ranked;
+  return ranked.slice(0, options.limit);
 }
 
 /** Un point de l'historique des prix d'un carburant. */
