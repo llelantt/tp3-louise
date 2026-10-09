@@ -19,6 +19,7 @@ Source : open data `prix-carburants.gouv.fr` / `data.gouv.fr` (Licence Ouverte).
 | `npm run typecheck` | TypeScript en mode strict |
 | `npm run db:generate` | génère une migration Drizzle depuis `src/db/schema.ts` |
 | `npm run db:migrate` | applique les migrations |
+| `npm run ingest` | lance une passe d'ingestion du flux open data |
 | `npm run create-key -- <nom>` | génère une clé API et stocke son empreinte |
 
 ## Conventions

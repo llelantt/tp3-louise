@@ -34,6 +34,20 @@ Créez une clé API (elle n'est affichée qu'une fois) :
 npm run create-key -- demo
 ```
 
+## Ingestion des données
+
+Le flux open data (ZIP contenant du XML) est récupéré, décompressé et inséré :
+
+```bash
+npm run ingest            # une passe unique
+```
+
+En service, le worker d'ingestion tourne en tâche de fond si `INGEST_ENABLED=true`
+(intervalle `INGEST_INTERVAL_MINUTES`, 12 min par défaut). Le téléchargement est borné
+(`INGEST_MAX_ARCHIVE_BYTES`) et l'archive est protégée contre les zip-bombs ; un flux
+indisponible ou corrompu est journalisé sans jamais faire tomber l'API (dernières données
+conservées). Les prix non mis à jour depuis `PRICE_STALE_AFTER_DAYS` jours passent en périmé.
+
 ## Vérifications
 
 ```bash

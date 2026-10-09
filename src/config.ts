@@ -24,7 +24,7 @@ const envSchema = z.object({
 
   INGEST_INSTANT_URL: z.string().url().default("https://donnees.roulez-eco.fr/opendata/instantane"),
   INGEST_DAILY_URL: z.string().url().default("https://donnees.roulez-eco.fr/opendata/jour"),
-  INGEST_CRON: z.string().min(1).default("*/12 * * * *"),
+  INGEST_INTERVAL_MINUTES: z.coerce.number().int().positive().max(1440).default(12),
   INGEST_ENABLED: booleanish,
   INGEST_MAX_ARCHIVE_BYTES: z.coerce.number().int().positive().default(104_857_600),
   PRICE_STALE_AFTER_DAYS: z.coerce.number().int().positive().default(3),
