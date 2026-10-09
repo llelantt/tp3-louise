@@ -142,11 +142,16 @@ function toDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
 }
 
+export interface HistoryOptions {
+  historyDays: number;
+  maxPoints: number;
+}
+
 /** Lit le detail d'une station et l'historique recent de chaque carburant. */
 export async function getStationDetail(
   db: Db,
   id: number,
-  historyLimit = 30,
+  options: HistoryOptions,
 ): Promise<StationDetail | null> {
   const stationResult = await db.execute<StationRow>(sql`
     SELECT id, name, brand, address, city, postal_code, lat, lon,
@@ -170,8 +175,9 @@ export async function getStationDetail(
              row_number() OVER (PARTITION BY fuel ORDER BY observed_at DESC) AS rn
       FROM fuel_price_history
       WHERE station_id = ${id}
+        AND observed_at >= now() - (${options.historyDays}::int * interval '1 day')
     ) ranked
-    WHERE rn <= ${historyLimit}
+    WHERE rn <= ${options.maxPoints}
     ORDER BY fuel, observed_at DESC
   `);
 

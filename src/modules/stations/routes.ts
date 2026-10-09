@@ -6,12 +6,15 @@ import { findCandidates, getStationDetail } from "./repository.js";
 import {
   cheapestQuerySchema,
   cheapestResponseSchema,
+  stationDetailQuerySchema,
   stationDetailResponseSchema,
   stationIdParamsSchema,
   type StationDetailResponse,
   type StationResult,
 } from "./schemas.js";
 import { rankStations, type RankedStation, type StationDetail } from "./service.js";
+
+const MAX_HISTORY_POINTS = 200;
 
 function toResult(station: RankedStation): StationResult {
   return {
@@ -115,12 +118,16 @@ export const stationRoutes: FastifyPluginAsyncZod = async (app) => {
         tags: ["stations"],
         summary: "Detail d'une station et historique des prix",
         params: stationIdParamsSchema,
+        querystring: stationDetailQuerySchema,
         response: { 200: stationDetailResponseSchema },
       },
     },
     async (request) => {
       const { id } = request.params;
-      const detail = await getStationDetail(app.db, id);
+      const detail = await getStationDetail(app.db, id, {
+        historyDays: request.query.history_days,
+        maxPoints: MAX_HISTORY_POINTS,
+      });
       if (!detail) {
         throw new NotFoundError(`Station ${id} introuvable`);
       }

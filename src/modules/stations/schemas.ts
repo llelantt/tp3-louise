@@ -4,16 +4,28 @@ import { fuelEnum } from "../../db/schema.js";
 export const fuelSchema = z.enum(fuelEnum.enumValues);
 const sortSchema = z.enum(["total_cost", "price", "distance"]);
 
+const numericPattern = /^[+-]?(\d+(\.\d+)?|\.\d+)([eE][+-]?\d+)?$/;
+
+/**
+ * Nombre issu d'une query string : refuse la chaine vide, NaN, Infinity, les
+ * notations hex/octales, et les tableaux (parametre present plusieurs fois).
+ */
+const numberParam = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  return numericPattern.test(trimmed) ? Number(trimmed) : Number.NaN;
+}, z.number().finite());
+
 /** Parametres de la recherche de stations les moins cheres. */
 export const cheapestQuerySchema = z.object({
-  lat: z.coerce.number().min(-90).max(90),
-  lon: z.coerce.number().min(-180).max(180),
-  radius_km: z.coerce.number().positive().max(200).default(10),
+  lat: numberParam.pipe(z.number().min(-90).max(90)),
+  lon: numberParam.pipe(z.number().min(-180).max(180)),
+  radius_km: numberParam.pipe(z.number().positive().max(200)).default(10),
   fuel: fuelSchema,
-  liters: z.coerce.number().positive().max(200).default(50),
-  consumption: z.coerce.number().positive().max(30).default(6),
+  liters: numberParam.pipe(z.number().positive().max(200)).default(50),
+  consumption: numberParam.pipe(z.number().positive().max(30)).default(6),
   sort: sortSchema.default("total_cost"),
-  limit: z.coerce.number().int().positive().max(100).default(20),
+  limit: numberParam.pipe(z.number().int().positive().max(100)).default(20),
 });
 
 export type CheapestQuery = z.infer<typeof cheapestQuerySchema>;
@@ -45,8 +57,18 @@ export const cheapestResponseSchema = z.object({
   stations: z.array(stationResultSchema),
 });
 
-/** Parametre de chemin pour une station. */
-export const stationIdParamsSchema = z.object({ id: z.coerce.number().int().positive() });
+/** Parametre de chemin pour une station : chiffres uniquement, longueur bornee. */
+export const stationIdParamsSchema = z.object({
+  id: z
+    .string()
+    .regex(/^\d{1,12}$/, "Identifiant de station invalide")
+    .transform((value) => Number(value)),
+});
+
+/** Parametres du detail d'une station. */
+export const stationDetailQuerySchema = z.object({
+  history_days: numberParam.pipe(z.number().int().positive().max(90)).default(30),
+});
 
 const pricePointSchema = z.object({ observed_at: z.string(), price: z.number() });
 
