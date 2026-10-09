@@ -10,17 +10,20 @@ import {
   validatorCompiler,
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
+import type { Pool } from "pg";
 import { z } from "zod";
 import type { AppConfig } from "./config.js";
+import { createDb, createPool, type Db } from "./db/client.js";
 import { AppError } from "./lib/errors.js";
 import type { Logger } from "./lib/logger.js";
-
-/** Mention legale de la source open data, exposee dans les reponses et la doc. */
-export const DATA_SOURCE = "prix-carburants.gouv.fr / data.gouv.fr (Licence Ouverte)";
+import { DATA_SOURCE } from "./lib/source.js";
+import { stationRoutes } from "./modules/stations/routes.js";
 
 export interface BuildAppOptions {
   config: AppConfig;
   logger: Logger;
+  /** Base injectee (tests). Sinon, un pool est cree depuis la config. */
+  db?: Db;
 }
 
 function parseCorsOrigins(raw: string): boolean | string[] {
@@ -33,11 +36,24 @@ function parseCorsOrigins(raw: string): boolean | string[] {
 }
 
 /** Construit l'instance Fastify complete (plugins, erreurs, routes). */
-export async function buildApp({ config, logger }: BuildAppOptions) {
+export async function buildApp({ config, logger, db }: BuildAppOptions) {
   const app = Fastify({ loggerInstance: logger }).withTypeProvider<ZodTypeProvider>();
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
+
+  let pool: Pool | undefined;
+  let database = db;
+  if (!database) {
+    pool = createPool(config);
+    database = createDb(pool);
+  }
+
+  app.decorate("config", config);
+  app.decorate("db", database);
+  app.addHook("onClose", async () => {
+    if (pool) await pool.end();
+  });
 
   await app.register(swagger, {
     openapi: {
@@ -114,6 +130,8 @@ export async function buildApp({ config, logger }: BuildAppOptions) {
     },
     async () => ({ status: "ok" as const, version: "0.1.0", source: DATA_SOURCE }),
   );
+
+  await app.register(stationRoutes);
 
   return app;
 }
