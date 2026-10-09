@@ -32,6 +32,13 @@ export class NotFoundError extends AppError {
   }
 }
 
+/** Conflit avec l'etat courant (409), par exemple une limite atteinte. */
+export class ConflictError extends AppError {
+  constructor(message = "Conflit") {
+    super(message, 409, "conflict");
+  }
+}
+
 /** Limite de debit depassee (429). */
 export class RateLimitError extends AppError {
   constructor(message = "Trop de requetes") {

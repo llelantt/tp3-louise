@@ -30,6 +30,14 @@ const envSchema = z.object({
 
   API_KEY_PEPPER: z.string().min(1),
 
+  MAX_ALERTS_PER_KEY: z.coerce.number().int().positive().default(20),
+  WEBHOOK_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
+  WEBHOOK_MAX_ATTEMPTS: z.coerce.number().int().positive().max(10).default(3),
+  WEBHOOK_MAX_FAILURES: z.coerce.number().int().positive().default(5),
+  WEBHOOK_MAX_RESPONSE_BYTES: z.coerce.number().int().positive().default(65_536),
+  // Autorise les adresses privees/loopback : uniquement pour les tests (jamais en prod).
+  WEBHOOK_ALLOW_PRIVATE: booleanish("false"),
+
   INGEST_INSTANT_URL: z.string().url().default("https://donnees.roulez-eco.fr/opendata/instantane"),
   INGEST_DAILY_URL: z.string().url().default("https://donnees.roulez-eco.fr/opendata/jour"),
   INGEST_INTERVAL_MINUTES: z.coerce.number().int().positive().max(1440).default(12),

@@ -7,7 +7,15 @@ export function createLogger(config: AppConfig) {
   return pino({
     level: config.LOG_LEVEL,
     redact: {
-      paths: ["req.headers['x-api-key']", "req.headers.authorization", "*.apiKey"],
+      paths: [
+        "req.headers['x-api-key']",
+        "req.headers.authorization",
+        "*.apiKey",
+        "*.webhookSecret",
+        "*.webhook_secret",
+        "webhookSecret",
+        "secret",
+      ],
       censor: "[redacted]",
     },
     transport: pretty

@@ -1,7 +1,8 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
-import { NotFoundError, UnauthorizedError } from "../../lib/errors.js";
+import { ConflictError, NotFoundError, UnauthorizedError } from "../../lib/errors.js";
 import { DATA_SOURCE } from "../../lib/source.js";
 import {
+  countAlerts,
   createAlert,
   deleteAlert,
   listAlerts,
@@ -15,6 +16,7 @@ import {
   alertsResponseSchema,
   createAlertSchema,
 } from "./schemas.js";
+import { generateWebhookSecret } from "./webhook.js";
 
 const MAX_EVENTS = 100;
 
@@ -28,6 +30,8 @@ function toAlert(alert: AlertRecord) {
     radius_km: alert.radiusKm,
     threshold_price: alert.thresholdPrice,
     channel: alert.channel,
+    webhook_url: alert.webhookUrl,
+    webhook_secret: alert.webhookSecret,
     is_active: alert.isActive,
     created_at: alert.createdAt.toISOString(),
   };
@@ -48,7 +52,12 @@ export const alertRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       if (!request.apiKeyId) throw new UnauthorizedError();
-      const alert = await createAlert(app.db, request.apiKeyId, request.body);
+      const existing = await countAlerts(app.db, request.apiKeyId);
+      if (existing >= app.config.MAX_ALERTS_PER_KEY) {
+        throw new ConflictError(`Limite de ${app.config.MAX_ALERTS_PER_KEY} alertes atteinte`);
+      }
+      const secret = request.body.channel === "webhook" ? generateWebhookSecret() : null;
+      const alert = await createAlert(app.db, request.apiKeyId, request.body, secret);
       reply.code(201);
       return { alert: toAlert(alert) };
     },

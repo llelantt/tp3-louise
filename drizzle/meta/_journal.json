@@ -15,6 +15,13 @@
       "when": 1791544565532,
       "tag": "0001_sturdy_red_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791545535507,
+      "tag": "0002_late_santa_claus",
+      "breakpoints": true
     }
   ]
 }

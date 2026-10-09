@@ -144,6 +144,8 @@ export const alerts = pgTable(
     thresholdPrice: numeric("threshold_price", { precision: 6, scale: 3 }).notNull(),
     channel: alertChannelEnum("channel").default("inapp").notNull(),
     webhookUrl: text("webhook_url"),
+    webhookSecret: text("webhook_secret"),
+    webhookFailures: integer("webhook_failures").default(0).notNull(),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
