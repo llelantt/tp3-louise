@@ -7,6 +7,7 @@ declare module "fastify" {
     db: Db;
     config: AppConfig;
     authGuard: ApiKeyGuard;
+    fetchImpl: typeof fetch;
   }
   interface FastifyRequest {
     apiKeyId: string | null;

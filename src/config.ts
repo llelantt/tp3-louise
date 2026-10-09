@@ -25,6 +25,11 @@ const envSchema = z.object({
 
   DOCS_ENABLED: booleanish("true"),
 
+  GEOCODE_BASE_URL: z.string().url().default("https://data.geopf.fr/geocodage"),
+  GEOCODE_TIMEOUT_MS: z.coerce.number().int().positive().default(3_000),
+  GEOCODE_CACHE_MAX: z.coerce.number().int().positive().default(500),
+  GEOCODE_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(30),
+
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   RATE_LIMIT_WINDOW: z.string().min(1).default("1 minute"),
 

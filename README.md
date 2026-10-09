@@ -80,6 +80,7 @@ Les sondes et la documentation restent hors préfixe.
 | GET | `/ready` | sonde de disponibilité : base + fraîcheur de la dernière ingestion |
 | GET | `/v1/stations/cheapest` | stations classées par coût réel (`truncated`, `data_freshness`) |
 | GET | `/v1/stations/:id` | détail d'une station et historique (`history_days`) |
+| GET | `/v1/geocode?q=` | géocoder une adresse (proxy serveur vers la Géoplateforme / BAN) |
 | POST | `/v1/alerts` | créer une alerte (in-app ou webhook signé) |
 | GET | `/v1/alerts` | lister ses alertes |
 | DELETE | `/v1/alerts/:id` | supprimer une alerte |
@@ -107,6 +108,10 @@ Voir `.env.example`. Les principales : `DATABASE_URL`, `API_KEY_PEPPER`, `PORT`,
   limiting par IP. Préférez un nombre de sauts ou une liste de proxys.
 - `WEBHOOK_ALLOW_PRIVATE` : laisser `false` ; `true` (tests uniquement) autorise http et
   les adresses privées/loopback pour les webhooks.
+- `GEOCODE_*` : le géocodage d'adresses passe par un **proxy serveur** vers la
+  Géoplateforme (`data.geopf.fr/geocodage`, source BAN — Licence Ouverte). L'hôte est
+  fixe, le texte est nettoyé (3–200 car.), 5 résultats max, cache LRU borné et limite par
+  clé plus basse (`GEOCODE_RATE_LIMIT_PER_MIN`). Aucun texte saisi n'est journalisé.
 
 ## Limites connues
 

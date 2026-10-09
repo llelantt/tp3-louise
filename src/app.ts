@@ -26,6 +26,7 @@ import { API_VERSION } from "./lib/version.js";
 import { createApiKeyGuard } from "./modules/auth/apiKey.js";
 import { SlidingWindowLimiter } from "./modules/auth/rateLimit.js";
 import { alertRoutes } from "./modules/alerts/routes.js";
+import { geocodeRoutes } from "./modules/geocode/routes.js";
 import { stationRoutes } from "./modules/stations/routes.js";
 
 const freshnessSchema = z.object({
@@ -45,6 +46,8 @@ export interface BuildAppOptions {
   logger: Logger;
   /** Base injectee (tests). Sinon, un pool est cree depuis la config. */
   db?: Db;
+  /** fetch injectable (tests). Sinon, le fetch global. */
+  fetchImpl?: typeof fetch;
 }
 
 /** Origines CORS : restrictif en production, "*" toleré en developpement. */
@@ -60,7 +63,7 @@ function corsOrigins(config: AppConfig): boolean | string[] {
 }
 
 /** Construit l'instance Fastify complete (plugins, erreurs, routes). */
-export async function buildApp({ config, logger, db }: BuildAppOptions) {
+export async function buildApp({ config, logger, db, fetchImpl }: BuildAppOptions) {
   const app = Fastify({
     loggerInstance: logger,
     bodyLimit: config.BODY_LIMIT_BYTES,
@@ -81,6 +84,7 @@ export async function buildApp({ config, logger, db }: BuildAppOptions) {
 
   app.decorate("config", config);
   app.decorate("db", database);
+  app.decorate("fetchImpl", fetchImpl ?? globalThis.fetch);
   app.decorateRequest("apiKeyId", null);
   app.decorate("authGuard", createApiKeyGuard(database, config, new SlidingWindowLimiter()));
 
@@ -92,7 +96,8 @@ export async function buildApp({ config, logger, db }: BuildAppOptions) {
       {
         apiKeyId: request.apiKeyId,
         method: request.method,
-        url: request.url,
+        // On ne logge jamais la query string (elle peut contenir une adresse saisie).
+        url: request.url.split("?")[0],
         statusCode: reply.statusCode,
       },
       "requete servie",
@@ -245,6 +250,7 @@ export async function buildApp({ config, logger, db }: BuildAppOptions) {
 
   await app.register(stationRoutes, { prefix: "/v1" });
   await app.register(alertRoutes, { prefix: "/v1" });
+  await app.register(geocodeRoutes, { prefix: "/v1" });
 
   await app.register(fastifyStatic, {
     root: fileURLToPath(new URL("../public", import.meta.url)),
