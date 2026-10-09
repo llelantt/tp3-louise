@@ -13,6 +13,7 @@ const PEPPER = "auth-pepper";
 const ACTIVE_KEY = `ck_${"x".repeat(43)}`;
 const EXPIRED_KEY = `ck_${"y".repeat(43)}`;
 const REVOKED_KEY = `ck_${"z".repeat(43)}`;
+const RATE_KEY = `ck_${"r".repeat(43)}`;
 
 describe.skipIf(!databaseUrl)("authentification (integration)", () => {
   let pool: Pool;
@@ -31,11 +32,12 @@ describe.skipIf(!databaseUrl)("authentification (integration)", () => {
     await migrate(db, { migrationsFolder: "drizzle" });
     await db.execute(sql`DELETE FROM api_keys WHERE name LIKE 'auth-test-%'`);
     await db.execute(sql`
-      INSERT INTO api_keys (key_hash, name, is_active, expires_at)
+      INSERT INTO api_keys (key_hash, name, is_active, expires_at, rate_limit_per_min)
       VALUES
-        (${hashApiKey(ACTIVE_KEY, PEPPER)}, 'auth-test-active', true, NULL),
-        (${hashApiKey(EXPIRED_KEY, PEPPER)}, 'auth-test-expired', true, now() - interval '1 day'),
-        (${hashApiKey(REVOKED_KEY, PEPPER)}, 'auth-test-revoked', false, NULL)
+        (${hashApiKey(ACTIVE_KEY, PEPPER)}, 'auth-test-active', true, NULL, 120),
+        (${hashApiKey(EXPIRED_KEY, PEPPER)}, 'auth-test-expired', true, now() - interval '1 day', 120),
+        (${hashApiKey(REVOKED_KEY, PEPPER)}, 'auth-test-revoked', false, NULL, 120),
+        (${hashApiKey(RATE_KEY, PEPPER)}, 'auth-test-rate', true, NULL, 2)
     `);
 
     app = await buildApp({ config, logger: createLogger(config), db });
@@ -71,5 +73,21 @@ describe.skipIf(!databaseUrl)("authentification (integration)", () => {
       headers: { "x-api-key": REVOKED_KEY },
     });
     expect(response.statusCode).toBe(401);
+  });
+
+  it("applique la limite par cle et expose les en-tetes", async () => {
+    const first = await app.inject({ method: "GET", url, headers: { "x-api-key": RATE_KEY } });
+    expect(first.statusCode).toBe(200);
+    expect(first.headers["x-ratelimit-limit"]).toBe("2");
+    expect(first.headers["x-ratelimit-remaining"]).toBe("1");
+
+    const second = await app.inject({ method: "GET", url, headers: { "x-api-key": RATE_KEY } });
+    expect(second.statusCode).toBe(200);
+    expect(second.headers["x-ratelimit-remaining"]).toBe("0");
+
+    const third = await app.inject({ method: "GET", url, headers: { "x-api-key": RATE_KEY } });
+    expect(third.statusCode).toBe(429);
+    expect(third.headers["retry-after"]).toBeDefined();
+    expect(third.json().error).toBe("rate_limited");
   });
 });

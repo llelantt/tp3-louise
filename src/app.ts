@@ -87,6 +87,13 @@ export async function buildApp({ config, logger, db }: BuildAppOptions) {
     timeWindow: config.RATE_LIMIT_WINDOW,
     // Garde-fou global par IP ; la limite propre a la cle est appliquee dans authGuard.
     keyGenerator: (request) => request.ip,
+    // On laisse les en-tetes X-RateLimit-* au limiteur par cle.
+    addHeaders: {
+      "x-ratelimit-limit": false,
+      "x-ratelimit-remaining": false,
+      "x-ratelimit-reset": false,
+      "retry-after": false,
+    },
   });
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
