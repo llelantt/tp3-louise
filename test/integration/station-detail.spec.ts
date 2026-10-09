@@ -9,7 +9,7 @@ import { hashApiKey } from "../../src/lib/apiKeys.js";
 import { createLogger } from "../../src/lib/logger.js";
 
 const databaseUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
-const API_KEY = "ck_detail_test_key";
+const API_KEY = `ck_${"d".repeat(43)}`;
 const PEPPER = "detail-pepper";
 
 describe.skipIf(!databaseUrl)("GET /stations/:id (integration)", () => {

@@ -3,7 +3,7 @@ import type { FastifyRequest } from "fastify";
 import type { AppConfig } from "../../config.js";
 import type { Db } from "../../db/client.js";
 import { apiKeys } from "../../db/schema.js";
-import { hashApiKey } from "../../lib/apiKeys.js";
+import { hashApiKey, isValidApiKeyFormat } from "../../lib/apiKeys.js";
 import { RateLimitError, UnauthorizedError } from "../../lib/errors.js";
 import type { SlidingWindowLimiter } from "./rateLimit.js";
 
@@ -11,9 +11,9 @@ import type { SlidingWindowLimiter } from "./rateLimit.js";
 export type ApiKeyGuard = (request: FastifyRequest) => Promise<void>;
 
 /**
- * Construit un preHandler qui exige une cle API active dans l'en-tete X-API-Key,
- * puis applique la limite de debit propre a la cle.
- * La cle est comparee par empreinte poivree ; elle n'est jamais stockee en clair.
+ * Construit un preHandler qui exige une cle API active et non expiree dans l'en-tete
+ * X-API-Key, puis applique la limite de debit propre a la cle.
+ * Le format est verifie avant toute requete SQL ; seule l'empreinte HMAC est stockee.
  */
 export function createApiKeyGuard(
   db: Db,
@@ -23,7 +23,7 @@ export function createApiKeyGuard(
   return async function guard(request: FastifyRequest): Promise<void> {
     const header = request.headers["x-api-key"];
     const raw = Array.isArray(header) ? header[0] : header;
-    if (typeof raw !== "string" || raw.length === 0) {
+    if (typeof raw !== "string" || !isValidApiKeyFormat(raw)) {
       throw new UnauthorizedError();
     }
 
@@ -32,6 +32,7 @@ export function createApiKeyGuard(
         id: apiKeys.id,
         isActive: apiKeys.isActive,
         rateLimitPerMin: apiKeys.rateLimitPerMin,
+        expiresAt: apiKeys.expiresAt,
       })
       .from(apiKeys)
       .where(eq(apiKeys.keyHash, hashApiKey(raw, config.API_KEY_PEPPER)))
@@ -39,6 +40,9 @@ export function createApiKeyGuard(
 
     if (!key || !key.isActive) {
       throw new UnauthorizedError();
+    }
+    if (key.expiresAt !== null && key.expiresAt.getTime() <= Date.now()) {
+      throw new UnauthorizedError("Cle API expiree");
     }
     if (!limiter.consume(key.id, key.rateLimitPerMin)) {
       throw new RateLimitError();

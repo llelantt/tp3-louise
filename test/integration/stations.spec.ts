@@ -11,7 +11,7 @@ import { createLogger } from "../../src/lib/logger.js";
 // Test d'integration : ne s'execute que si une base PostgreSQL/PostGIS est fournie
 // (CI, ou TEST_DATABASE_URL en local). Sans base, le fichier est ignore.
 const databaseUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
-const API_KEY = "ck_integration_test_key";
+const API_KEY = `ck_${"s".repeat(43)}`;
 const PEPPER = "integration-pepper";
 
 describe.skipIf(!databaseUrl)("GET /stations/cheapest (integration)", () => {

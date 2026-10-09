@@ -9,6 +9,6 @@ declare module "fastify" {
     authGuard: ApiKeyGuard;
   }
   interface FastifyRequest {
-    apiKeyId?: string;
+    apiKeyId: string | null;
   }
 }

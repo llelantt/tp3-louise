@@ -122,6 +122,7 @@ export const apiKeys = pgTable("api_keys", {
   tier: text("tier").default("free").notNull(),
   rateLimitPerMin: integer("rate_limit_per_min").default(120).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
 });

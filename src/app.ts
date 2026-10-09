@@ -56,6 +56,7 @@ export async function buildApp({ config, logger, db }: BuildAppOptions) {
 
   app.decorate("config", config);
   app.decorate("db", database);
+  app.decorateRequest("apiKeyId", null);
   app.decorate("authGuard", createApiKeyGuard(database, config, new SlidingWindowLimiter()));
   app.addHook("onClose", async () => {
     if (pool) await pool.end();

@@ -10,7 +10,7 @@ import { createLogger } from "../../src/lib/logger.js";
 import { evaluateAlerts } from "../../src/modules/alerts/service.js";
 
 const databaseUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
-const API_KEY = "ck_alerts_test_key";
+const API_KEY = `ck_${"a".repeat(43)}`;
 const PEPPER = "alerts-pepper";
 
 describe.skipIf(!databaseUrl)("alertes (integration)", () => {
