@@ -17,6 +17,9 @@ import { createDb, createPool, type Db } from "./db/client.js";
 import { AppError } from "./lib/errors.js";
 import type { Logger } from "./lib/logger.js";
 import { DATA_SOURCE } from "./lib/source.js";
+import { createApiKeyGuard } from "./modules/auth/apiKey.js";
+import { SlidingWindowLimiter } from "./modules/auth/rateLimit.js";
+import { alertRoutes } from "./modules/alerts/routes.js";
 import { stationRoutes } from "./modules/stations/routes.js";
 
 export interface BuildAppOptions {
@@ -51,6 +54,7 @@ export async function buildApp({ config, logger, db }: BuildAppOptions) {
 
   app.decorate("config", config);
   app.decorate("db", database);
+  app.decorate("authGuard", createApiKeyGuard(database, config, new SlidingWindowLimiter()));
   app.addHook("onClose", async () => {
     if (pool) await pool.end();
   });
@@ -78,11 +82,8 @@ export async function buildApp({ config, logger, db }: BuildAppOptions) {
   await app.register(rateLimit, {
     max: config.RATE_LIMIT_MAX,
     timeWindow: config.RATE_LIMIT_WINDOW,
-    keyGenerator: (request) => {
-      const apiKey = request.headers["x-api-key"];
-      if (typeof apiKey === "string" && apiKey.length > 0) return apiKey;
-      return request.ip;
-    },
+    // Garde-fou global par IP ; la limite propre a la cle est appliquee dans authGuard.
+    keyGenerator: (request) => request.ip,
   });
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
@@ -132,6 +133,7 @@ export async function buildApp({ config, logger, db }: BuildAppOptions) {
   );
 
   await app.register(stationRoutes);
+  await app.register(alertRoutes);
 
   return app;
 }

@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { Db } from "../../db/client.js";
 import type { Fuel } from "../../db/schema.js";
-import type { StationCandidate } from "./service.js";
+import type { PricePoint, StationCandidate, StationDetail } from "./service.js";
 
 interface RawRow extends Record<string, unknown> {
   id: string | number;
@@ -77,4 +77,101 @@ export async function findCandidates(
     observedAt: row.observed_at instanceof Date ? row.observed_at : new Date(row.observed_at),
     distanceKm: Number(row.distance_km),
   }));
+}
+
+interface StationRow extends Record<string, unknown> {
+  id: string | number;
+  name: string;
+  brand: string | null;
+  address: string | null;
+  city: string | null;
+  postal_code: string | null;
+  lat: number;
+  lon: number;
+  is_24h: boolean;
+  is_closed: boolean;
+  services: string[] | null;
+  source_updated_at: Date | string | null;
+}
+
+interface FuelRow extends Record<string, unknown> {
+  fuel: Fuel;
+  price: string;
+  observed_at: Date | string;
+  is_stale: boolean;
+  is_rupture: boolean;
+}
+
+interface HistoryRow extends Record<string, unknown> {
+  fuel: Fuel;
+  price: string;
+  observed_at: Date | string;
+}
+
+function toDate(value: Date | string): Date {
+  return value instanceof Date ? value : new Date(value);
+}
+
+/** Lit le detail d'une station et l'historique recent de chaque carburant. */
+export async function getStationDetail(
+  db: Db,
+  id: number,
+  historyLimit = 30,
+): Promise<StationDetail | null> {
+  const stationResult = await db.execute<StationRow>(sql`
+    SELECT id, name, brand, address, city, postal_code, lat, lon,
+           is_24h, is_closed, services, source_updated_at
+    FROM stations
+    WHERE id = ${id}
+  `);
+  const station = stationResult.rows[0];
+  if (!station) return null;
+
+  const fuelsResult = await db.execute<FuelRow>(sql`
+    SELECT fuel, price, observed_at, is_stale, is_rupture
+    FROM station_fuels
+    WHERE station_id = ${id}
+    ORDER BY fuel
+  `);
+
+  const historyResult = await db.execute<HistoryRow>(sql`
+    SELECT fuel, price, observed_at FROM (
+      SELECT fuel, price, observed_at,
+             row_number() OVER (PARTITION BY fuel ORDER BY observed_at DESC) AS rn
+      FROM fuel_price_history
+      WHERE station_id = ${id}
+    ) ranked
+    WHERE rn <= ${historyLimit}
+    ORDER BY fuel, observed_at DESC
+  `);
+
+  const historyByFuel = new Map<Fuel, PricePoint[]>();
+  for (const row of historyResult.rows) {
+    const points = historyByFuel.get(row.fuel) ?? [];
+    points.push({ observedAt: toDate(row.observed_at), price: Number(row.price) });
+    historyByFuel.set(row.fuel, points);
+  }
+
+  return {
+    id: Number(station.id),
+    name: station.name,
+    brand: station.brand,
+    address: station.address,
+    city: station.city,
+    postalCode: station.postal_code,
+    lat: Number(station.lat),
+    lon: Number(station.lon),
+    is24h: station.is_24h,
+    isClosed: station.is_closed,
+    services: station.services ?? [],
+    sourceUpdatedAt: station.source_updated_at ? toDate(station.source_updated_at) : null,
+    fuels: fuelsResult.rows.map((row) => ({
+      fuel: row.fuel,
+      price: Number(row.price),
+      observedAt: toDate(row.observed_at),
+      isStale: row.is_stale,
+      isRupture: row.is_rupture,
+      history: historyByFuel.get(row.fuel) ?? [],
+    })),
+  };
 }

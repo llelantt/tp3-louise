@@ -1,3 +1,4 @@
+import type { Fuel } from "../../db/schema.js";
 import { detourCost, round, totalCost } from "../../lib/cost.js";
 
 /** Cles de tri acceptees par la recherche. */
@@ -74,4 +75,37 @@ export function rankStations(
   ranked.sort((a, b) => compare(a, b, options.sort));
 
   return options.limit !== undefined ? ranked.slice(0, options.limit) : ranked;
+}
+
+/** Un point de l'historique des prix d'un carburant. */
+export interface PricePoint {
+  observedAt: Date;
+  price: number;
+}
+
+/** L'etat courant d'un carburant et son historique recent. */
+export interface StationFuelDetail {
+  fuel: Fuel;
+  price: number;
+  observedAt: Date;
+  isStale: boolean;
+  isRupture: boolean;
+  history: PricePoint[];
+}
+
+/** Le detail complet d'une station. */
+export interface StationDetail {
+  id: number;
+  name: string;
+  brand: string | null;
+  address: string | null;
+  city: string | null;
+  postalCode: string | null;
+  lat: number;
+  lon: number;
+  is24h: boolean;
+  isClosed: boolean;
+  services: string[];
+  sourceUpdatedAt: Date | null;
+  fuels: StationFuelDetail[];
 }

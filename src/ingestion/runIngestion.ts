@@ -8,6 +8,7 @@ import { markStalePrices } from "./markStale.js";
 import { parseStationsXml } from "./parseStations.js";
 import { upsertStations } from "./upsert.js";
 import { extractXmlFromZip } from "./zip.js";
+import { evaluateAlerts } from "../modules/alerts/service.js";
 
 export interface IngestionDeps {
   db: Db;
@@ -39,6 +40,7 @@ export async function runIngestion(deps: IngestionDeps): Promise<void> {
     const parsed = parseStationsXml(entry.data.toString("utf8"));
     const result = await upsertStations(db, parsed.stations);
     const stale = await markStalePrices(db, config.PRICE_STALE_AFTER_DAYS);
+    const eventsCreated = await evaluateAlerts(db);
 
     if (runId) {
       await db
@@ -53,7 +55,10 @@ export async function runIngestion(deps: IngestionDeps): Promise<void> {
         .where(eq(ingestionRuns.id, runId));
     }
 
-    logger.info({ ...result, skipped: parsed.skipped, staleMarked: stale }, "ingestion terminee");
+    logger.info(
+      { ...result, skipped: parsed.skipped, staleMarked: stale, eventsCreated },
+      "ingestion terminee",
+    );
   } catch (error) {
     if (runId) {
       await db

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { fuelEnum } from "../../db/schema.js";
 
-const fuelSchema = z.enum(fuelEnum.enumValues);
+export const fuelSchema = z.enum(fuelEnum.enumValues);
 const sortSchema = z.enum(["total_cost", "price", "distance"]);
 
 /** Parametres de la recherche de stations les moins cheres. */
@@ -43,5 +43,40 @@ export const cheapestResponseSchema = z.object({
   stations: z.array(stationResultSchema),
 });
 
+/** Parametre de chemin pour une station. */
+export const stationIdParamsSchema = z.object({ id: z.coerce.number().int().positive() });
+
+const pricePointSchema = z.object({ observed_at: z.string(), price: z.number() });
+
+const stationFuelDetailSchema = z.object({
+  fuel: fuelSchema,
+  price: z.number(),
+  observed_at: z.string(),
+  is_stale: z.boolean(),
+  is_rupture: z.boolean(),
+  history: z.array(pricePointSchema),
+});
+
+/** Reponse complete de GET /stations/:id. */
+export const stationDetailResponseSchema = z.object({
+  source: z.string(),
+  station: z.object({
+    id: z.number(),
+    name: z.string(),
+    brand: z.string().nullable(),
+    address: z.string().nullable(),
+    city: z.string().nullable(),
+    postal_code: z.string().nullable(),
+    lat: z.number(),
+    lon: z.number(),
+    is_24h: z.boolean(),
+    is_closed: z.boolean(),
+    services: z.array(z.string()),
+    source_updated_at: z.string().nullable(),
+    fuels: z.array(stationFuelDetailSchema),
+  }),
+});
+
 export type StationResult = z.infer<typeof stationResultSchema>;
 export type CheapestResponse = z.infer<typeof cheapestResponseSchema>;
+export type StationDetailResponse = z.infer<typeof stationDetailResponseSchema>;

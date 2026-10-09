@@ -1,10 +1,17 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { round } from "../../lib/cost.js";
+import { NotFoundError } from "../../lib/errors.js";
 import { DATA_SOURCE } from "../../lib/source.js";
-import { createApiKeyGuard } from "../auth/apiKey.js";
-import { findCandidates } from "./repository.js";
-import { cheapestQuerySchema, cheapestResponseSchema, type StationResult } from "./schemas.js";
-import { rankStations, type RankedStation } from "./service.js";
+import { findCandidates, getStationDetail } from "./repository.js";
+import {
+  cheapestQuerySchema,
+  cheapestResponseSchema,
+  stationDetailResponseSchema,
+  stationIdParamsSchema,
+  type StationDetailResponse,
+  type StationResult,
+} from "./schemas.js";
+import { rankStations, type RankedStation, type StationDetail } from "./service.js";
 
 const MAX_RESULTS = 20;
 const MAX_CANDIDATES = 500;
@@ -28,14 +35,40 @@ function toResult(station: RankedStation): StationResult {
   };
 }
 
+function toDetail(detail: StationDetail): StationDetailResponse["station"] {
+  return {
+    id: detail.id,
+    name: detail.name,
+    brand: detail.brand,
+    address: detail.address,
+    city: detail.city,
+    postal_code: detail.postalCode,
+    lat: detail.lat,
+    lon: detail.lon,
+    is_24h: detail.is24h,
+    is_closed: detail.isClosed,
+    services: detail.services,
+    source_updated_at: detail.sourceUpdatedAt?.toISOString() ?? null,
+    fuels: detail.fuels.map((fuel) => ({
+      fuel: fuel.fuel,
+      price: fuel.price,
+      observed_at: fuel.observedAt.toISOString(),
+      is_stale: fuel.isStale,
+      is_rupture: fuel.isRupture,
+      history: fuel.history.map((point) => ({
+        observed_at: point.observedAt.toISOString(),
+        price: point.price,
+      })),
+    })),
+  };
+}
+
 /** Routes de recherche et de detail des stations. */
 export const stationRoutes: FastifyPluginAsyncZod = async (app) => {
-  const guard = createApiKeyGuard(app.db, app.config);
-
   app.get(
     "/stations/cheapest",
     {
-      preHandler: guard,
+      preHandler: app.authGuard,
       schema: {
         tags: ["stations"],
         summary: "Stations les moins cheres autour d'un point",
@@ -69,6 +102,27 @@ export const stationRoutes: FastifyPluginAsyncZod = async (app) => {
         count: ranked.length,
         stations: ranked.map(toResult),
       };
+    },
+  );
+
+  app.get(
+    "/stations/:id",
+    {
+      preHandler: app.authGuard,
+      schema: {
+        tags: ["stations"],
+        summary: "Detail d'une station et historique des prix",
+        params: stationIdParamsSchema,
+        response: { 200: stationDetailResponseSchema },
+      },
+    },
+    async (request) => {
+      const { id } = request.params;
+      const detail = await getStationDetail(app.db, id);
+      if (!detail) {
+        throw new NotFoundError(`Station ${id} introuvable`);
+      }
+      return { source: DATA_SOURCE, station: toDetail(detail) };
     },
   );
 };

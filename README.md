@@ -58,17 +58,25 @@ npm test            # suite complète (Vitest)
 
 ## Endpoints
 
+Toutes les routes métier exigent une clé API dans l'en-tête `X-API-Key`.
+
 | Méthode | Route | Rôle |
 |---|---|---|
-| GET | `/health` | sonde de vie |
+| GET | `/health` | sonde de vie (publique) |
 | GET | `/stations/cheapest` | stations classées par coût réel |
 | GET | `/stations/:id` | détail d'une station et historique des prix |
-| GET/POST/DELETE | `/alerts` | alertes de prix |
-| GET | `/docs` | documentation OpenAPI (Swagger UI) |
+| POST | `/alerts` | créer une alerte de prix |
+| GET | `/alerts` | lister ses alertes |
+| DELETE | `/alerts/:id` | supprimer une alerte |
+| GET | `/alerts/:id/events` | événements déclenchés par une alerte |
+| GET | `/docs` | documentation OpenAPI (Swagger UI, publique) |
 
-> Les endpoints métier arrivent progressivement ; `/health` et `/docs` sont disponibles dès
-> le squelette. Voir `AGENTS.md` pour les conventions et `.opencode/plans/` pour les plans
-> en cours.
+Exemple :
+
+```bash
+curl -s "localhost:3000/stations/cheapest?lat=48.85&lon=2.35&fuel=gazole&radius_km=5" \
+  -H "X-API-Key: <votre-cle>" | jq
+```
 
 ## La chaîne d'agents OpenCode
 
