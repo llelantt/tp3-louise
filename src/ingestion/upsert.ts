@@ -33,7 +33,7 @@ async function upsertStationRows(db: Db, stations: readonly ParsedStation[]): Pr
     await db.execute(sql`
       INSERT INTO stations
         (id, name, brand, address, city, postal_code, lat, lon, geom, services, hours,
-         is_24h, is_closed, source_updated_at, updated_at)
+         is_24h, is_closed, source_updated_at)
       VALUES ${sql.join(rows, sql`, `)}
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name, brand = EXCLUDED.brand, address = EXCLUDED.address,
@@ -58,7 +58,7 @@ async function upsertFuelRows(db: Db, stations: readonly ParsedStation[]): Promi
       )`,
     );
     await db.execute(sql`
-      INSERT INTO station_fuels (station_id, fuel, price, is_rupture, observed_at, updated_at)
+      INSERT INTO station_fuels (station_id, fuel, price, is_rupture, observed_at)
       VALUES ${sql.join(rows, sql`, `)}
       ON CONFLICT (station_id, fuel) DO UPDATE SET
         price = EXCLUDED.price, is_rupture = EXCLUDED.is_rupture,
