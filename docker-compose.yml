@@ -27,6 +27,8 @@ services:
       HOST: 0.0.0.0
       CORS_ORIGINS: "*"
       NODE_ENV: production
+      # /docs visible pour la demo ; passer a "false" en production reelle.
+      DOCS_ENABLED: "true"
     ports:
       - "3000:3000"
     command: sh -c "npm run db:migrate:prod && npm start:prod"

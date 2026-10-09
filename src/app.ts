@@ -1,4 +1,5 @@
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import swagger from "@fastify/swagger";
@@ -14,7 +15,7 @@ import {
 } from "fastify-type-provider-zod";
 import type { Pool } from "pg";
 import { z } from "zod";
-import type { AppConfig } from "./config.js";
+import { type AppConfig, parseTrustProxy } from "./config.js";
 import { createDb, createPool, type Db } from "./db/client.js";
 import { AppError } from "./lib/errors.js";
 import type { Logger } from "./lib/logger.js";
@@ -31,10 +32,13 @@ export interface BuildAppOptions {
   db?: Db;
 }
 
-function parseCorsOrigins(raw: string): boolean | string[] {
-  const value = raw.trim();
-  if (value === "*") return true;
-  return value
+/** Origines CORS : restrictif en production, "*" toleré en developpement. */
+function corsOrigins(config: AppConfig): boolean | string[] {
+  const raw = config.CORS_ORIGINS.trim();
+  if (raw === "*") {
+    return config.NODE_ENV === "production" ? [] : true;
+  }
+  return raw
     .split(",")
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0);
@@ -42,7 +46,12 @@ function parseCorsOrigins(raw: string): boolean | string[] {
 
 /** Construit l'instance Fastify complete (plugins, erreurs, routes). */
 export async function buildApp({ config, logger, db }: BuildAppOptions) {
-  const app = Fastify({ loggerInstance: logger }).withTypeProvider<ZodTypeProvider>();
+  const app = Fastify({
+    loggerInstance: logger,
+    bodyLimit: config.BODY_LIMIT_BYTES,
+    requestTimeout: config.REQUEST_TIMEOUT_MS,
+    trustProxy: parseTrustProxy(config.TRUST_PROXY),
+  }).withTypeProvider<ZodTypeProvider>();
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
@@ -51,6 +60,7 @@ export async function buildApp({ config, logger, db }: BuildAppOptions) {
   let database = db;
   if (!database) {
     pool = createPool(config);
+    pool.on("error", (error) => logger.error({ err: error }, "erreur du pool PostgreSQL"));
     database = createDb(pool);
   }
 
@@ -58,29 +68,69 @@ export async function buildApp({ config, logger, db }: BuildAppOptions) {
   app.decorate("db", database);
   app.decorateRequest("apiKeyId", null);
   app.decorate("authGuard", createApiKeyGuard(database, config, new SlidingWindowLimiter()));
+
   app.addHook("onClose", async () => {
     if (pool) await pool.end();
   });
-
-  await app.register(swagger, {
-    openapi: {
-      info: {
-        title: "Carbu API",
-        version: "0.1.0",
-        description: `Stations-service les moins cheres autour d'un point GPS. Source : ${DATA_SOURCE}.`,
+  app.addHook("onResponse", async (request, reply) => {
+    request.log.info(
+      {
+        apiKeyId: request.apiKeyId,
+        method: request.method,
+        url: request.url,
+        statusCode: reply.statusCode,
       },
-      tags: [
-        { name: "system", description: "Sante du service" },
-        { name: "stations", description: "Recherche et detail des stations" },
-        { name: "alerts", description: "Alertes de prix" },
-      ],
-    },
-    transform: jsonSchemaTransform,
+      "requete servie",
+    );
   });
 
-  await app.register(swaggerUi, { routePrefix: "/docs" });
+  app.setNotFoundHandler((request, reply) => {
+    reply.status(404).send({
+      error: "not_found",
+      message: `Route ${request.method} ${request.url} introuvable`,
+    });
+  });
 
-  await app.register(cors, { origin: parseCorsOrigins(config.CORS_ORIGINS) });
+  await app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+  });
+
+  if (config.DOCS_ENABLED) {
+    await app.register(swagger, {
+      openapi: {
+        info: {
+          title: "Carbu API",
+          version: "0.1.0",
+          description: `Stations-service les moins cheres autour d'un point GPS. Source : ${DATA_SOURCE}.`,
+        },
+        tags: [
+          { name: "system", description: "Sante du service" },
+          { name: "stations", description: "Recherche et detail des stations" },
+          { name: "alerts", description: "Alertes de prix" },
+        ],
+      },
+      transform: jsonSchemaTransform,
+    });
+    await app.register(swaggerUi, { routePrefix: "/docs" });
+    // Swagger UI a besoin de styles/scripts inline : on relache la CSP sur /docs.
+    app.addHook("onSend", async (request, reply, payload) => {
+      if (request.url.startsWith("/docs")) reply.removeHeader("content-security-policy");
+      return payload;
+    });
+  }
+
+  await app.register(cors, { origin: corsOrigins(config) });
 
   await app.register(rateLimit, {
     max: config.RATE_LIMIT_MAX,
