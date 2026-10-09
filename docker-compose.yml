@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: carbu
+      POSTGRES_PASSWORD: carbu
+      POSTGRES_DB: carbu
+    ports:
+      - "5432:5432"
+    volumes:
+      - carbu-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U carbu"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://carbu:carbu@db:5432/carbu
+      API_KEY_PEPPER: change-me-in-production
+      PORT: "3000"
+      HOST: 0.0.0.0
+      CORS_ORIGINS: "*"
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    command: sh -c "npm run db:migrate:prod && npm start:prod"
+
+volumes:
+  carbu-db:

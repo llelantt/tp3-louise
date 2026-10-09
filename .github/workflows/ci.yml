@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: carbu
+          POSTGRES_PASSWORD: carbu
+          POSTGRES_DB: carbu
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U carbu"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://carbu:carbu@localhost:5432/carbu
+      API_KEY_PEPPER: ci-pepper-not-secret
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run db:migrate
+      - run: npm test
