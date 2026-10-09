@@ -8,6 +8,7 @@ export class ApiError extends Error {
     this.status = options.status ?? 0;
     this.code = options.code ?? "error";
     this.details = options.details;
+    this.retryAfter = options.retryAfter ?? null;
   }
 }
 
@@ -51,6 +52,7 @@ export async function apiFetch(path, { apiKey, signal, method = "GET", body } = 
       status: response.status,
       code: data && data.error ? data.error : "http_error",
       details: data ? data.details : undefined,
+      retryAfter: Number(response.headers.get("retry-after")) || null,
     });
   }
   return data;

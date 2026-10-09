@@ -4,5 +4,6 @@ coverage/
 package-lock.json
 *.md
 drizzle/
+public/fonts/
 .opencode/scratch/
 .opencode/plans/*.md

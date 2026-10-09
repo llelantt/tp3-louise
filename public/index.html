@@ -2,7 +2,7 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Carbu — le plein au meilleur coût</title>
     <meta
       name="description"
@@ -19,15 +19,16 @@
           <p class="tagline">Le plein au meilleur coût, pas seulement au meilleur prix.</p>
         </div>
       </div>
-      <nav class="topbar-actions">
-        <a href="/docs" class="ghost-link">API / OpenAPI</a>
-      </nav>
+      <div class="topbar-actions">
+        <button id="themeToggle" class="btn ghost" type="button" aria-pressed="false">Thème</button>
+        <a href="/docs" class="btn ghost">API</a>
+      </div>
     </header>
 
     <main>
-      <section class="card apikey-card">
+      <section class="card" aria-label="Clé API">
         <label for="apiKey">Clé API</label>
-        <div class="apikey-row">
+        <div class="row">
           <input
             id="apiKey"
             type="password"
@@ -35,118 +36,139 @@
             placeholder="ck_… (npm run create-key -- demo)"
           />
           <button id="apiKeySave" class="btn secondary" type="button">Enregistrer</button>
+          <button id="apiKeyForget" class="btn ghost" type="button">Oublier</button>
           <span id="apiKeyState" class="state"></span>
         </div>
         <p class="hint">
-          Stockée uniquement dans votre navigateur (localStorage). Générez-en une avec
-          <code>npm run create-key -- demo</code>.
+          Conservée uniquement dans ce navigateur (localStorage). En clair sur la machine :
+          acceptable pour un usage local, à éviter sur un poste partagé.
         </p>
       </section>
 
-      <section class="card">
-        <form id="searchForm" class="search-form">
+      <section class="card" aria-label="Recherche">
+        <div class="row address-row">
+          <div class="field grow">
+            <label for="address">Adresse ou ville</label>
+            <input
+              id="address"
+              type="text"
+              autocomplete="off"
+              placeholder="10 rue de Rivoli, Paris"
+            />
+          </div>
+          <button id="addressSearch" class="btn secondary" type="button">Localiser</button>
+        </div>
+        <div id="cities" class="chips" aria-label="Villes prédéfinies"></div>
+
+        <form id="searchForm" class="grid" novalidate>
           <div class="field">
             <label for="lat">Latitude</label>
-            <input id="lat" name="lat" type="number" step="any" value="48.8566" required />
+            <input id="lat" name="lat" type="number" step="any" inputmode="decimal" />
+            <p class="error" data-error="lat"></p>
           </div>
           <div class="field">
             <label for="lon">Longitude</label>
-            <input id="lon" name="lon" type="number" step="any" value="2.3522" required />
+            <input id="lon" name="lon" type="number" step="any" inputmode="decimal" />
+            <p class="error" data-error="lon"></p>
           </div>
           <div class="field">
             <label for="fuel">Carburant</label>
-            <select id="fuel" name="fuel">
-              <option value="gazole">Gazole</option>
-              <option value="sp95">SP95</option>
-              <option value="sp98">SP98</option>
-              <option value="e10">E10</option>
-              <option value="e85">E85</option>
-              <option value="gplc">GPLc</option>
-            </select>
+            <select id="fuel" name="fuel"></select>
           </div>
           <div class="field">
             <label for="radius">Rayon (km)</label>
-            <input id="radius" name="radius_km" type="number" min="1" max="200" value="10" />
+            <input id="radius" name="radius_km" type="number" step="any" inputmode="decimal" />
+            <p class="error" data-error="radius_km"></p>
           </div>
           <div class="field">
             <label for="liters">Litres</label>
-            <input id="liters" name="liters" type="number" min="1" max="200" value="50" />
+            <input id="liters" name="liters" type="number" step="any" inputmode="decimal" />
+            <p class="error" data-error="liters"></p>
           </div>
           <div class="field">
-            <label for="consumption">Consommation (L/100)</label>
+            <label for="consumption">Conso. (L/100)</label>
             <input
               id="consumption"
               name="consumption"
               type="number"
-              min="1"
-              max="30"
-              step="0.1"
-              value="6"
+              step="any"
+              inputmode="decimal"
             />
+            <p class="error" data-error="consumption"></p>
           </div>
           <div class="field">
             <label for="sort">Trier par</label>
-            <select id="sort" name="sort">
-              <option value="total_cost">Coût total</option>
-              <option value="price">Prix au litre</option>
-              <option value="distance">Distance</option>
-            </select>
+            <select id="sort" name="sort"></select>
           </div>
-          <div class="actions">
+          <div class="field actions-field">
             <button type="submit" class="btn primary">Chercher</button>
             <button type="button" id="geolocate" class="btn secondary">Ma position</button>
           </div>
         </form>
       </section>
 
-      <section id="status" class="status" role="status" aria-live="polite"></section>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
 
-      <section id="results" class="results"></section>
+      <div class="layout">
+        <section class="card map-card" aria-label="Plan des stations">
+          <div class="card-head">
+            <h2>Plan</h2>
+            <span id="freshness" class="meta"></span>
+          </div>
+          <svg
+            id="map"
+            viewBox="0 0 400 400"
+            role="group"
+            aria-label="Stations autour du point de recherche"
+          ></svg>
+          <p class="legend">
+            <span class="dot" style="--h: 140"></span> moins cher
+            <span class="dot" style="--h: 70"></span>
+            <span class="dot" style="--h: 0"></span> plus cher
+          </p>
+        </section>
 
-      <section class="card alerts-card">
+        <section id="results" class="results" aria-label="Résultats"></section>
+      </div>
+
+      <section class="card" aria-label="Alertes de prix">
         <div class="card-head">
-          <h2>Mes alertes de prix</h2>
-          <button id="alertsRefresh" class="btn secondary" type="button">Rafraîchir</button>
+          <h2>Mes alertes</h2>
+          <button id="alertsRefresh" class="btn ghost" type="button">Rafraîchir</button>
         </div>
-        <form id="alertForm" class="alert-form">
+        <form id="alertForm" class="grid" novalidate>
           <div class="field">
             <label for="alertFuel">Carburant</label>
-            <select id="alertFuel">
-              <option value="gazole">Gazole</option>
-              <option value="sp95">SP95</option>
-              <option value="sp98">SP98</option>
-              <option value="e10">E10</option>
-              <option value="e85">E85</option>
-              <option value="gplc">GPLc</option>
-            </select>
+            <select id="alertFuel"></select>
           </div>
           <div class="field">
             <label for="alertLat">Latitude</label>
-            <input id="alertLat" type="number" step="any" value="48.8566" />
+            <input id="alertLat" type="number" step="any" />
           </div>
           <div class="field">
             <label for="alertLon">Longitude</label>
-            <input id="alertLon" type="number" step="any" value="2.3522" />
+            <input id="alertLon" type="number" step="any" />
           </div>
           <div class="field">
             <label for="alertRadius">Rayon (km)</label>
-            <input id="alertRadius" type="number" min="1" max="200" value="10" />
+            <input id="alertRadius" type="number" step="any" />
           </div>
           <div class="field">
             <label for="alertThreshold">Seuil (€/L)</label>
-            <input id="alertThreshold" type="number" min="0.5" max="5" step="0.001" value="1.8" />
+            <input id="alertThreshold" type="number" step="0.001" />
           </div>
-          <div class="actions">
+          <div class="field actions-field">
             <button type="submit" class="btn primary">Créer l'alerte</button>
           </div>
         </form>
+        <p class="hint">Notification in-app : les événements se consultent ci-dessous.</p>
         <div id="alertsList" class="alerts-list"></div>
       </section>
     </main>
 
     <div id="modal" class="modal" hidden>
       <div class="modal-backdrop" data-close></div>
-      <div class="modal-panel" role="dialog" aria-modal="true">
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-label="Détail">
         <button class="modal-close" type="button" data-close aria-label="Fermer">×</button>
         <div id="modalBody"></div>
       </div>
@@ -157,6 +179,7 @@
         Données
         <a href="https://www.prix-carburants.gouv.fr/" rel="noreferrer">prix-carburants.gouv.fr</a>
         / <a href="https://www.data.gouv.fr/" rel="noreferrer">data.gouv.fr</a> — Licence Ouverte.
+        Géocodage : Base Adresse Nationale (Géoplateforme).
       </p>
     </footer>
 
