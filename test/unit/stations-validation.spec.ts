@@ -8,7 +8,7 @@ import { createLogger } from "../../src/lib/logger.js";
 // une entree invalide doit donc repondre 400 sans jamais toucher la base.
 const fakeDb = {} as unknown as Db;
 
-describe("GET /stations/cheapest — validation", () => {
+describe("GET /v1/stations/cheapest — validation", () => {
   let app: App;
 
   beforeAll(async () => {
@@ -38,94 +38,94 @@ describe("GET /stations/cheapest — validation", () => {
   }
 
   it("rejette une latitude hors bornes", async () => {
-    expect(await status(`/stations/cheapest?lon=2.35&fuel=gazole&lat=999`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?lon=2.35&fuel=gazole&lat=999`)).toBe(400);
   });
 
   it("rejette une longitude hors bornes", async () => {
-    expect(await status(`/stations/cheapest?lat=48.85&fuel=gazole&lon=-999`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?lat=48.85&fuel=gazole&lon=-999`)).toBe(400);
   });
 
   it("rejette une latitude manquante", async () => {
-    expect(await status(`/stations/cheapest?lon=2.35&fuel=gazole`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?lon=2.35&fuel=gazole`)).toBe(400);
   });
 
   it("rejette un rayon nul ou negatif", async () => {
-    expect(await status(`/stations/cheapest?${base}&radius_km=0`)).toBe(400);
-    expect(await status(`/stations/cheapest?${base}&radius_km=-5`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?${base}&radius_km=0`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?${base}&radius_km=-5`)).toBe(400);
   });
 
   it("rejette un rayon extreme", async () => {
-    expect(await status(`/stations/cheapest?${base}&radius_km=100000`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?${base}&radius_km=100000`)).toBe(400);
   });
 
   it("rejette des litres negatifs ou nuls", async () => {
-    expect(await status(`/stations/cheapest?${base}&liters=-1`)).toBe(400);
-    expect(await status(`/stations/cheapest?${base}&liters=0`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?${base}&liters=-1`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?${base}&liters=0`)).toBe(400);
   });
 
   it("rejette une consommation non numerique", async () => {
-    expect(await status(`/stations/cheapest?${base}&consumption=beaucoup`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?${base}&consumption=beaucoup`)).toBe(400);
   });
 
   it("rejette un carburant inconnu", async () => {
-    expect(await status(`/stations/cheapest?lat=48.85&lon=2.35&fuel=essence`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?lat=48.85&lon=2.35&fuel=essence`)).toBe(400);
   });
 
   it("rejette une cle de tri inconnue", async () => {
-    expect(await status(`/stations/cheapest?${base}&sort=nimportequoi`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?${base}&sort=nimportequoi`)).toBe(400);
   });
 
   it("rejette NaN et Infinity", async () => {
-    expect(await status(`/stations/cheapest?lon=2.35&fuel=gazole&lat=NaN`)).toBe(400);
-    expect(await status(`/stations/cheapest?${base}&radius_km=Infinity`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?lon=2.35&fuel=gazole&lat=NaN`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?${base}&radius_km=Infinity`)).toBe(400);
   });
 
   it("rejette une latitude vide", async () => {
-    expect(await status(`/stations/cheapest?lon=2.35&fuel=gazole&lat=`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?lon=2.35&fuel=gazole&lat=`)).toBe(400);
   });
 
   it("rejette une notation hexadecimale ou octale", async () => {
-    expect(await status(`/stations/cheapest?lon=2.35&fuel=gazole&lat=0x10`)).toBe(400);
-    expect(await status(`/stations/cheapest?lon=2.35&fuel=gazole&lat=0b10`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?lon=2.35&fuel=gazole&lat=0x10`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?lon=2.35&fuel=gazole&lat=0b10`)).toBe(400);
   });
 
   it("rejette un parametre en double", async () => {
-    expect(await status(`/stations/cheapest?lat=1&lat=2&lon=2.35&fuel=gazole`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?lat=1&lat=2&lon=2.35&fuel=gazole`)).toBe(400);
   });
 
   it("rejette un rayon non numerique", async () => {
-    expect(await status(`/stations/cheapest?${base}&radius_km=beaucoup`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?${base}&radius_km=beaucoup`)).toBe(400);
   });
 
   it("borne le nombre de resultats", async () => {
-    expect(await status(`/stations/cheapest?${base}&limit=0`)).toBe(400);
-    expect(await status(`/stations/cheapest?${base}&limit=101`)).toBe(400);
-    expect(await status(`/stations/cheapest?${base}&limit=2.5`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?${base}&limit=0`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?${base}&limit=101`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?${base}&limit=2.5`)).toBe(400);
   });
 
   it("rejette une chaine tres longue", async () => {
-    expect(await status(`/stations/cheapest?lat=48.85&lon=2.35&fuel=${"a".repeat(5000)}`)).toBe(
+    expect(await status(`/v1/stations/cheapest?lat=48.85&lon=2.35&fuel=${"a".repeat(5000)}`)).toBe(
       400,
     );
   });
 
   it("rejette des caracteres etranges", async () => {
-    expect(await status(`/stations/cheapest?lat=48.85&lon=2.35&fuel=%00%01`)).toBe(400);
-    expect(await status(`/stations/cheapest?${base}&sort=%3Cscript%3E`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?lat=48.85&lon=2.35&fuel=%00%01`)).toBe(400);
+    expect(await status(`/v1/stations/cheapest?${base}&sort=%3Cscript%3E`)).toBe(400);
   });
 
   it("rejette un identifiant de station non conforme", async () => {
-    expect(await status(`/stations/abc`)).toBe(400);
-    expect(await status(`/stations/1e3`)).toBe(400);
-    expect(await status(`/stations/-1`)).toBe(400);
-    expect(await status(`/stations/1234567890123`)).toBe(400);
-    expect(await status(`/stations/12%20`)).toBe(400);
+    expect(await status(`/v1/stations/abc`)).toBe(400);
+    expect(await status(`/v1/stations/1e3`)).toBe(400);
+    expect(await status(`/v1/stations/-1`)).toBe(400);
+    expect(await status(`/v1/stations/1234567890123`)).toBe(400);
+    expect(await status(`/v1/stations/12%20`)).toBe(400);
   });
 
   it("borne history_days", async () => {
-    expect(await status(`/stations/900201?history_days=0`)).toBe(400);
-    expect(await status(`/stations/900201?history_days=91`)).toBe(400);
-    expect(await status(`/stations/900201?history_days=abc`)).toBe(400);
-    expect(await status(`/stations/900201?history_days=1.5`)).toBe(400);
+    expect(await status(`/v1/stations/900201?history_days=0`)).toBe(400);
+    expect(await status(`/v1/stations/900201?history_days=91`)).toBe(400);
+    expect(await status(`/v1/stations/900201?history_days=abc`)).toBe(400);
+    expect(await status(`/v1/stations/900201?history_days=1.5`)).toBe(400);
   });
 });

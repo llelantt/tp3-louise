@@ -4,6 +4,7 @@ import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
+import { sql } from "drizzle-orm";
 import Fastify, { type FastifyError } from "fastify";
 import { fileURLToPath } from "node:url";
 import {
@@ -17,13 +18,27 @@ import type { Pool } from "pg";
 import { z } from "zod";
 import { type AppConfig, parseTrustProxy } from "./config.js";
 import { createDb, createPool, type Db } from "./db/client.js";
+import { getDataFreshness } from "./ingestion/freshness.js";
 import { AppError } from "./lib/errors.js";
 import type { Logger } from "./lib/logger.js";
 import { DATA_SOURCE } from "./lib/source.js";
+import { API_VERSION } from "./lib/version.js";
 import { createApiKeyGuard } from "./modules/auth/apiKey.js";
 import { SlidingWindowLimiter } from "./modules/auth/rateLimit.js";
 import { alertRoutes } from "./modules/alerts/routes.js";
 import { stationRoutes } from "./modules/stations/routes.js";
+
+const freshnessSchema = z.object({
+  last_success_at: z.string().nullable(),
+  age_seconds: z.number().nullable(),
+});
+
+const readinessSchema = z.object({
+  status: z.enum(["ok", "degraded"]),
+  db: z.enum(["up", "down"]),
+  version: z.string(),
+  last_ingestion: freshnessSchema,
+});
 
 export interface BuildAppOptions {
   config: AppConfig;
@@ -111,7 +126,7 @@ export async function buildApp({ config, logger, db }: BuildAppOptions) {
       openapi: {
         info: {
           title: "Carbu API",
-          version: "0.1.0",
+          version: API_VERSION,
           description: `Stations-service les moins cheres autour d'un point GPS. Source : ${DATA_SOURCE}.`,
         },
         tags: [
@@ -119,6 +134,11 @@ export async function buildApp({ config, logger, db }: BuildAppOptions) {
           { name: "stations", description: "Recherche et detail des stations" },
           { name: "alerts", description: "Alertes de prix" },
         ],
+        components: {
+          securitySchemes: {
+            apiKey: { type: "apiKey", in: "header", name: "X-API-Key" },
+          },
+        },
       },
       transform: jsonSchemaTransform,
     });
@@ -189,11 +209,42 @@ export async function buildApp({ config, logger, db }: BuildAppOptions) {
         },
       },
     },
-    async () => ({ status: "ok" as const, version: "0.1.0", source: DATA_SOURCE }),
+    async () => ({ status: "ok" as const, version: API_VERSION, source: DATA_SOURCE }),
   );
 
-  await app.register(stationRoutes);
-  await app.register(alertRoutes);
+  app.get(
+    "/ready",
+    {
+      schema: {
+        tags: ["system"],
+        summary: "Sonde de disponibilite",
+        response: { 200: readinessSchema, 503: readinessSchema },
+      },
+    },
+    async (request, reply) => {
+      try {
+        await database.execute(sql`SELECT 1`);
+        return {
+          status: "ok" as const,
+          db: "up" as const,
+          version: API_VERSION,
+          last_ingestion: await getDataFreshness(database),
+        };
+      } catch (error) {
+        request.log.error({ err: error }, "readiness : base indisponible");
+        reply.status(503);
+        return {
+          status: "degraded" as const,
+          db: "down" as const,
+          version: API_VERSION,
+          last_ingestion: { last_success_at: null, age_seconds: null },
+        };
+      }
+    },
+  );
+
+  await app.register(stationRoutes, { prefix: "/v1" });
+  await app.register(alertRoutes, { prefix: "/v1" });
 
   await app.register(fastifyStatic, {
     root: fileURLToPath(new URL("../public", import.meta.url)),

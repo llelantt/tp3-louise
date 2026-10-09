@@ -18,8 +18,8 @@ La migration de base est appliquée automatiquement au démarrage.
 
 ## Démarrage local
 
-Prérequis : Node ≥ 22 et un PostgreSQL avec PostGIS (le `docker compose` ci-dessous n'en
-démarre qu'un seul est possible : `docker compose up -d db`).
+Prérequis : Node ≥ 22 et un PostgreSQL avec PostGIS. Pour ne démarrer que la base avec
+Docker : `docker compose up -d db`.
 
 ```bash
 cp .env.example .env          # ajustez DATABASE_URL et API_KEY_PEPPER
@@ -31,7 +31,9 @@ npm run dev                   # http://localhost:3000
 Créez une clé API (elle n'est affichée qu'une fois) :
 
 ```bash
-npm run create-key -- demo
+npm run create-key -- demo            # clé sans expiration
+npm run create-key -- demo --days 90  # clé valable 90 jours
+npm run revoke-key -- demo            # révoque par nom (ou par id)
 ```
 
 ## Ingestion des données
@@ -69,25 +71,50 @@ npm test            # suite complète (Vitest)
 
 ## Endpoints
 
-Toutes les routes métier exigent une clé API dans l'en-tête `X-API-Key`.
+Les routes métier sont préfixées `/v1` et exigent une clé API dans l'en-tête `X-API-Key`.
+Les sondes et la documentation restent hors préfixe.
 
 | Méthode | Route | Rôle |
 |---|---|---|
 | GET | `/health` | sonde de vie (publique) |
-| GET | `/stations/cheapest` | stations classées par coût réel |
-| GET | `/stations/:id` | détail d'une station et historique des prix |
-| POST | `/alerts` | créer une alerte de prix |
-| GET | `/alerts` | lister ses alertes |
-| DELETE | `/alerts/:id` | supprimer une alerte |
-| GET | `/alerts/:id/events` | événements déclenchés par une alerte |
+| GET | `/ready` | sonde de disponibilité : base + fraîcheur de la dernière ingestion |
+| GET | `/v1/stations/cheapest` | stations classées par coût réel (`truncated`, `data_freshness`) |
+| GET | `/v1/stations/:id` | détail d'une station et historique (`history_days`) |
+| POST | `/v1/alerts` | créer une alerte (in-app ou webhook signé) |
+| GET | `/v1/alerts` | lister ses alertes |
+| DELETE | `/v1/alerts/:id` | supprimer une alerte |
+| GET | `/v1/alerts/:id/events` | événements déclenchés par une alerte |
 | GET | `/docs` | documentation OpenAPI (Swagger UI, publique) |
 
 Exemple :
 
 ```bash
-curl -s "localhost:3000/stations/cheapest?lat=48.85&lon=2.35&fuel=gazole&radius_km=5" \
+curl -s "localhost:3000/v1/stations/cheapest?lat=48.85&lon=2.35&fuel=gazole&radius_km=5" \
   -H "X-API-Key: <votre-cle>" | jq
 ```
+
+## Variables d'environnement
+
+Voir `.env.example`. Les principales : `DATABASE_URL`, `API_KEY_PEPPER`, `PORT`, `HOST`,
+`CORS_ORIGINS`, `TRUST_PROXY`, `DOCS_ENABLED`, `RATE_LIMIT_MAX`, `BODY_LIMIT_BYTES`,
+`REQUEST_TIMEOUT_MS`, `DB_STATEMENT_TIMEOUT_MS`, `MAX_ALERTS_PER_KEY`, `WEBHOOK_*`,
+`INGEST_*`, `PRICE_STALE_AFTER_DAYS`.
+
+- `DOCS_ENABLED` : `true` pour la démo ; `false` est **recommandé en production** (Swagger
+  UI est un outil de développement).
+- `TRUST_PROXY` : `false` par défaut. À n'activer que derrière un proxy maîtrisé ; un
+  réglage trop large (`true`) permet de **falsifier `X-Forwarded-For`** et donc le rate
+  limiting par IP. Préférez un nombre de sauts ou une liste de proxys.
+- `WEBHOOK_ALLOW_PRIVATE` : laisser `false` ; `true` (tests uniquement) autorise http et
+  les adresses privées/loopback pour les webhooks.
+
+## Limites connues
+
+- Le rate limiting par clé est **en mémoire** : correct en mono-instance, à remplacer par un
+  backend partagé (Redis) en multi-instance.
+- L'anti-SSRF des webhooks résout le DNS puis se connecte à l'IP résolue ; le rebinding DNS
+  reste un risque théorique, atténué par l'absence de suivi de redirection.
+- L'historique des prix n'est pas encore purgé (politique de rétention à venir).
 
 ## La chaîne d'agents OpenCode
 

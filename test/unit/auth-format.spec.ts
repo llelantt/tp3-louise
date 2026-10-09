@@ -31,7 +31,7 @@ describe("garde d'authentification — format de cle", () => {
     await app.close();
   });
 
-  const url = "/stations/cheapest?lat=48.85&lon=2.35&fuel=gazole";
+  const url = "/v1/stations/cheapest?lat=48.85&lon=2.35&fuel=gazole";
 
   it("rejette un format invalide sans toucher la base", async () => {
     selectCalls = 0;

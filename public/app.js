@@ -96,7 +96,7 @@ $("#searchForm").addEventListener("submit", async (event) => {
   setStatus("Recherche…", "info");
   $("#results").innerHTML = "";
   try {
-    const data = await api(`/stations/cheapest?${params.toString()}`);
+    const data = await api(`/v1/stations/cheapest?${params.toString()}`);
     renderResults(data);
   } catch (error) {
     setStatus(error.message, "error");
@@ -199,7 +199,7 @@ async function openDetail(id) {
   $("#modalBody").innerHTML = "<p>Chargement…</p>";
   modal.hidden = false;
   try {
-    const data = await api(`/stations/${id}`);
+    const data = await api(`/v1/stations/${id}`);
     const station = data.station;
     const fuels = station.fuels
       .map(
@@ -253,7 +253,7 @@ $("#alertForm").addEventListener("submit", async (event) => {
     label: `Alerte ${$("#alertFuel").value}`,
   };
   try {
-    await api("/alerts", { method: "POST", body: JSON.stringify(payload) });
+    await api("/v1/alerts", { method: "POST", body: JSON.stringify(payload) });
     setStatus("Alerte créée.", "info");
     await loadAlerts();
   } catch (error) {
@@ -267,7 +267,7 @@ async function loadAlerts() {
   const container = $("#alertsList");
   container.innerHTML = "<p class='meta'>Chargement…</p>";
   try {
-    const data = await api("/alerts");
+    const data = await api("/v1/alerts");
     if (!data.alerts.length) {
       container.innerHTML = "<p class='meta'>Aucune alerte pour l'instant.</p>";
       return;
@@ -291,7 +291,7 @@ async function loadAlerts() {
     container.querySelectorAll("[data-delete]").forEach((node) =>
       node.addEventListener("click", async () => {
         try {
-          await api(`/alerts/${node.dataset.delete}`, { method: "DELETE" });
+          await api(`/v1/alerts/${node.dataset.delete}`, { method: "DELETE" });
           await loadAlerts();
         } catch (error) {
           setStatus(error.message, "error");
@@ -311,7 +311,7 @@ async function showEvents(alertId) {
   $("#modalBody").innerHTML = "<p>Chargement…</p>";
   modal.hidden = false;
   try {
-    const data = await api(`/alerts/${alertId}/events`);
+    const data = await api(`/v1/alerts/${alertId}/events`);
     if (!data.events.length) {
       $("#modalBody").innerHTML =
         "<h2>Événements</h2><p class='meta'>Aucun événement déclenché.</p>";

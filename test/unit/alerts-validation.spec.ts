@@ -31,7 +31,7 @@ describe("alertes et detail — validation", () => {
   async function postAlert(payload: unknown): Promise<number> {
     const response = await app.inject({
       method: "POST",
-      url: "/alerts",
+      url: "/v1/alerts",
       headers,
       payload: JSON.stringify(payload),
     });
@@ -81,7 +81,7 @@ describe("alertes et detail — validation", () => {
   it("rejette un identifiant de station non numerique", async () => {
     const response = await app.inject({
       method: "GET",
-      url: "/stations/abc",
+      url: "/v1/stations/abc",
       headers: { "x-api-key": "peu-importe" },
     });
     expect(response.statusCode).toBe(400);
@@ -90,7 +90,7 @@ describe("alertes et detail — validation", () => {
   it("rejette un identifiant d'alerte non uuid", async () => {
     const response = await app.inject({
       method: "GET",
-      url: "/alerts/pas-un-uuid/events",
+      url: "/v1/alerts/pas-un-uuid/events",
       headers: { "x-api-key": "peu-importe" },
     });
     expect(response.statusCode).toBe(400);

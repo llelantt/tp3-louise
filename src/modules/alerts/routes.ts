@@ -46,6 +46,7 @@ export const alertRoutes: FastifyPluginAsyncZod = async (app) => {
       schema: {
         tags: ["alerts"],
         summary: "Creer une alerte de prix",
+        security: [{ apiKey: [] }],
         body: createAlertSchema,
         response: { 201: alertResponseSchema },
       },
@@ -70,6 +71,7 @@ export const alertRoutes: FastifyPluginAsyncZod = async (app) => {
       schema: {
         tags: ["alerts"],
         summary: "Lister ses alertes",
+        security: [{ apiKey: [] }],
         response: { 200: alertsResponseSchema },
       },
     },
@@ -87,6 +89,7 @@ export const alertRoutes: FastifyPluginAsyncZod = async (app) => {
       schema: {
         tags: ["alerts"],
         summary: "Supprimer une alerte",
+        security: [{ apiKey: [] }],
         params: alertIdParamsSchema,
       },
     },
@@ -105,6 +108,7 @@ export const alertRoutes: FastifyPluginAsyncZod = async (app) => {
       schema: {
         tags: ["alerts"],
         summary: "Evenements declenches par une alerte",
+        security: [{ apiKey: [] }],
         params: alertIdParamsSchema,
         response: { 200: alertEventsResponseSchema },
       },

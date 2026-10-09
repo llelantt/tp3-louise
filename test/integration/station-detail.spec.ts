@@ -12,7 +12,7 @@ const databaseUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
 const API_KEY = `ck_${"d".repeat(43)}`;
 const PEPPER = "detail-pepper";
 
-describe.skipIf(!databaseUrl)("GET /stations/:id (integration)", () => {
+describe.skipIf(!databaseUrl)("GET /v1/stations/:id (integration)", () => {
   let pool: Pool;
   let app: App;
   let db: ReturnType<typeof createDb>;
@@ -62,7 +62,7 @@ describe.skipIf(!databaseUrl)("GET /stations/:id (integration)", () => {
   it("renvoie le detail et l'historique des prix", async () => {
     const response = await app.inject({
       method: "GET",
-      url: "/stations/900201",
+      url: "/v1/stations/900201",
       headers: { "x-api-key": API_KEY },
     });
     expect(response.statusCode).toBe(200);
@@ -80,7 +80,7 @@ describe.skipIf(!databaseUrl)("GET /stations/:id (integration)", () => {
   it("renvoie 404 pour une station inconnue", async () => {
     const response = await app.inject({
       method: "GET",
-      url: "/stations/999999",
+      url: "/v1/stations/999999",
       headers: { "x-api-key": API_KEY },
     });
     expect(response.statusCode).toBe(404);

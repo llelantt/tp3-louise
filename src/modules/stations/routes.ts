@@ -2,6 +2,7 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { round } from "../../lib/cost.js";
 import { NotFoundError } from "../../lib/errors.js";
 import { DATA_SOURCE } from "../../lib/source.js";
+import { getDataFreshness } from "../../ingestion/freshness.js";
 import { findCandidates, getStationDetail } from "./repository.js";
 import {
   cheapestQuerySchema,
@@ -75,11 +76,13 @@ export const stationRoutes: FastifyPluginAsyncZod = async (app) => {
         description:
           "Classe par cout reel (prix du plein + cout du detour). Exclut les prix perimes, " +
           "les ruptures et les stations fermees.",
+        security: [{ apiKey: [] }],
         querystring: cheapestQuerySchema,
         response: { 200: cheapestResponseSchema },
       },
     },
-    async (request) => {
+    async (request, reply) => {
+      reply.header("Cache-Control", "private, max-age=60");
       const query = request.query;
       const result = await findCandidates(app.db, {
         lat: query.lat,
@@ -105,6 +108,7 @@ export const stationRoutes: FastifyPluginAsyncZod = async (app) => {
         fuel: query.fuel,
         count: ranked.length,
         truncated: result.totalMatches > query.limit,
+        data_freshness: await getDataFreshness(app.db),
         stations: ranked.map(toResult),
       };
     },
@@ -117,6 +121,7 @@ export const stationRoutes: FastifyPluginAsyncZod = async (app) => {
       schema: {
         tags: ["stations"],
         summary: "Detail d'une station et historique des prix",
+        security: [{ apiKey: [] }],
         params: stationIdParamsSchema,
         querystring: stationDetailQuerySchema,
         response: { 200: stationDetailResponseSchema },
@@ -131,7 +136,11 @@ export const stationRoutes: FastifyPluginAsyncZod = async (app) => {
       if (!detail) {
         throw new NotFoundError(`Station ${id} introuvable`);
       }
-      return { source: DATA_SOURCE, station: toDetail(detail) };
+      return {
+        source: DATA_SOURCE,
+        data_freshness: await getDataFreshness(app.db),
+        station: toDetail(detail),
+      };
     },
   );
 };

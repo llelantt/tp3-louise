@@ -14,7 +14,7 @@ const databaseUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
 const API_KEY = `ck_${"s".repeat(43)}`;
 const PEPPER = "integration-pepper";
 
-describe.skipIf(!databaseUrl)("GET /stations/cheapest (integration)", () => {
+describe.skipIf(!databaseUrl)("GET /v1/stations/cheapest (integration)", () => {
   let pool: Pool;
   let app: App;
   let db: ReturnType<typeof createDb>;
@@ -89,7 +89,7 @@ describe.skipIf(!databaseUrl)("GET /stations/cheapest (integration)", () => {
   it("repond 401 sans cle API", async () => {
     const response = await app.inject({
       method: "GET",
-      url: "/stations/cheapest?lat=48.85&lon=2.35&fuel=gazole",
+      url: "/v1/stations/cheapest?lat=48.85&lon=2.35&fuel=gazole",
     });
     expect(response.statusCode).toBe(401);
   });
@@ -97,7 +97,7 @@ describe.skipIf(!databaseUrl)("GET /stations/cheapest (integration)", () => {
   it("classe par cout total et exclut la station fermee", async () => {
     const response = await app.inject({
       method: "GET",
-      url: "/stations/cheapest?lat=48.85&lon=2.35&fuel=gazole&radius_km=5",
+      url: "/v1/stations/cheapest?lat=48.85&lon=2.35&fuel=gazole&radius_km=5",
       headers: { "x-api-key": API_KEY },
     });
     expect(response.statusCode).toBe(200);
@@ -116,7 +116,7 @@ describe.skipIf(!databaseUrl)("GET /stations/cheapest (integration)", () => {
   it("respecte sort=distance", async () => {
     const response = await app.inject({
       method: "GET",
-      url: "/stations/cheapest?lat=48.85&lon=2.35&fuel=gazole&radius_km=5&sort=distance",
+      url: "/v1/stations/cheapest?lat=48.85&lon=2.35&fuel=gazole&radius_km=5&sort=distance",
       headers: { "x-api-key": API_KEY },
     });
     expect(response.statusCode).toBe(200);
@@ -126,7 +126,7 @@ describe.skipIf(!databaseUrl)("GET /stations/cheapest (integration)", () => {
   it("zone dense : la station la moins chere n'est jamais exclue", async () => {
     const response = await app.inject({
       method: "GET",
-      url: "/stations/cheapest?lat=45&lon=4&fuel=gazole&radius_km=100&sort=total_cost&limit=20",
+      url: "/v1/stations/cheapest?lat=45&lon=4&fuel=gazole&radius_km=100&sort=total_cost&limit=20",
       headers: { "x-api-key": API_KEY },
     });
     expect(response.statusCode).toBe(200);
@@ -139,7 +139,7 @@ describe.skipIf(!databaseUrl)("GET /stations/cheapest (integration)", () => {
   it("zone dense : sort=price met la moins chere au litre en tete", async () => {
     const response = await app.inject({
       method: "GET",
-      url: "/stations/cheapest?lat=45&lon=4&fuel=gazole&radius_km=100&sort=price&limit=5",
+      url: "/v1/stations/cheapest?lat=45&lon=4&fuel=gazole&radius_km=100&sort=price&limit=5",
       headers: { "x-api-key": API_KEY },
     });
     expect(response.json().stations[0].price).toBeCloseTo(1.2, 3);
@@ -148,7 +148,7 @@ describe.skipIf(!databaseUrl)("GET /stations/cheapest (integration)", () => {
   it("zone dense : sort=distance met la plus proche en tete", async () => {
     const response = await app.inject({
       method: "GET",
-      url: "/stations/cheapest?lat=45&lon=4&fuel=gazole&radius_km=100&sort=distance&limit=5",
+      url: "/v1/stations/cheapest?lat=45&lon=4&fuel=gazole&radius_km=100&sort=distance&limit=5",
       headers: { "x-api-key": API_KEY },
     });
     expect(response.json().stations[0].price).toBeCloseTo(1.9, 3);

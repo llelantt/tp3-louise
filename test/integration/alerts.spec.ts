@@ -59,7 +59,12 @@ describe.skipIf(!databaseUrl)("alertes (integration)", () => {
   });
 
   async function createAlert(key: string, payload: Record<string, unknown>) {
-    return app.inject({ method: "POST", url: "/alerts", headers: { "x-api-key": key }, payload });
+    return app.inject({
+      method: "POST",
+      url: "/v1/alerts",
+      headers: { "x-api-key": key },
+      payload,
+    });
   }
 
   it("cree une alerte, l'evalue (idempotent) et lit les evenements", async () => {
@@ -80,7 +85,7 @@ describe.skipIf(!databaseUrl)("alertes (integration)", () => {
 
     const events = await app.inject({
       method: "GET",
-      url: `/alerts/${alertId}/events`,
+      url: `/v1/alerts/${alertId}/events`,
       headers: { "x-api-key": API_KEY },
     });
     expect(events.statusCode).toBe(200);
@@ -92,7 +97,7 @@ describe.skipIf(!databaseUrl)("alertes (integration)", () => {
 
     const deleted = await app.inject({
       method: "DELETE",
-      url: `/alerts/${alertId}`,
+      url: `/v1/alerts/${alertId}`,
       headers: { "x-api-key": API_KEY },
     });
     expect(deleted.statusCode).toBe(204);
@@ -109,28 +114,28 @@ describe.skipIf(!databaseUrl)("alertes (integration)", () => {
 
     const events = await app.inject({
       method: "GET",
-      url: `/alerts/${alertId}/events`,
+      url: `/v1/alerts/${alertId}/events`,
       headers: { "x-api-key": OTHER_KEY },
     });
     expect(events.statusCode).toBe(404);
 
     const remove = await app.inject({
       method: "DELETE",
-      url: `/alerts/${alertId}`,
+      url: `/v1/alerts/${alertId}`,
       headers: { "x-api-key": OTHER_KEY },
     });
     expect(remove.statusCode).toBe(404);
 
     const list = await app.inject({
       method: "GET",
-      url: "/alerts",
+      url: "/v1/alerts",
       headers: { "x-api-key": OTHER_KEY },
     });
     expect(list.json().alerts).toEqual([]);
 
     await app.inject({
       method: "DELETE",
-      url: `/alerts/${alertId}`,
+      url: `/v1/alerts/${alertId}`,
       headers: { "x-api-key": API_KEY },
     });
   });
@@ -163,7 +168,7 @@ describe.skipIf(!databaseUrl)("alertes (integration)", () => {
     for (const id of [first.json().alert.id, second.json().alert.id]) {
       await app.inject({
         method: "DELETE",
-        url: `/alerts/${id}`,
+        url: `/v1/alerts/${id}`,
         headers: { "x-api-key": API_KEY },
       });
     }
@@ -183,7 +188,7 @@ describe.skipIf(!databaseUrl)("alertes (integration)", () => {
 
     const list = await app.inject({
       method: "GET",
-      url: "/alerts",
+      url: "/v1/alerts",
       headers: { "x-api-key": API_KEY },
     });
     const listed = list
@@ -194,13 +199,13 @@ describe.skipIf(!databaseUrl)("alertes (integration)", () => {
 
     await app.inject({
       method: "DELETE",
-      url: `/alerts/${created.json().alert.id}`,
+      url: `/v1/alerts/${created.json().alert.id}`,
       headers: { "x-api-key": API_KEY },
     });
   });
 
   it("refuse une requete sans cle API", async () => {
-    const response = await app.inject({ method: "GET", url: "/alerts" });
+    const response = await app.inject({ method: "GET", url: "/v1/alerts" });
     expect(response.statusCode).toBe(401);
   });
 });

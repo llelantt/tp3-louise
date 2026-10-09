@@ -50,7 +50,7 @@ describe.skipIf(!databaseUrl)("authentification (integration)", () => {
     await pool?.end();
   });
 
-  const url = "/stations/cheapest?lat=48.85&lon=2.35&fuel=gazole";
+  const url = "/v1/stations/cheapest?lat=48.85&lon=2.35&fuel=gazole";
 
   it("accepte une cle active", async () => {
     const response = await app.inject({ method: "GET", url, headers: { "x-api-key": ACTIVE_KEY } });
@@ -89,5 +89,12 @@ describe.skipIf(!databaseUrl)("authentification (integration)", () => {
     expect(third.statusCode).toBe(429);
     expect(third.headers["retry-after"]).toBeDefined();
     expect(third.json().error).toBe("rate_limited");
+  });
+
+  it("expose /ready avec la fraicheur des donnees", async () => {
+    const response = await app.inject({ method: "GET", url: "/ready" });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().db).toBe("up");
+    expect(response.json()).toHaveProperty("last_ingestion");
   });
 });

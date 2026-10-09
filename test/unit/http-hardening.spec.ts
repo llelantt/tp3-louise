@@ -50,11 +50,18 @@ describe("durcissement HTTP", () => {
   it("refuse un corps trop volumineux (bodyLimit)", async () => {
     const response = await app.inject({
       method: "POST",
-      url: "/alerts",
+      url: "/v1/alerts",
       headers: { "x-api-key": `ck_${"a".repeat(43)}`, "content-type": "application/json" },
       payload: JSON.stringify({ label: "x".repeat(2_000_000) }),
     });
     expect(response.statusCode).toBe(413);
+  });
+
+  it("renvoie 503 sur /ready quand la base est indisponible", async () => {
+    const response = await app.inject({ method: "GET", url: "/ready" });
+    expect(response.statusCode).toBe(503);
+    expect(response.json().status).toBe("degraded");
+    expect(response.json().db).toBe("down");
   });
 });
 

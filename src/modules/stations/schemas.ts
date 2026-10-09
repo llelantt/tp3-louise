@@ -48,12 +48,19 @@ export const stationResultSchema = z.object({
   economy_vs_nearest: z.number(),
 });
 
+/** Fraicheur des donnees servies (age de la derniere ingestion reussie). */
+export const dataFreshnessSchema = z.object({
+  last_success_at: z.string().nullable(),
+  age_seconds: z.number().nullable(),
+});
+
 /** Reponse complete de GET /stations/cheapest. */
 export const cheapestResponseSchema = z.object({
   source: z.string(),
   fuel: fuelSchema,
   count: z.number(),
   truncated: z.boolean(),
+  data_freshness: dataFreshnessSchema,
   stations: z.array(stationResultSchema),
 });
 
@@ -84,6 +91,7 @@ const stationFuelDetailSchema = z.object({
 /** Reponse complete de GET /stations/:id. */
 export const stationDetailResponseSchema = z.object({
   source: z.string(),
+  data_freshness: dataFreshnessSchema,
   station: z.object({
     id: z.number(),
     name: z.string(),
