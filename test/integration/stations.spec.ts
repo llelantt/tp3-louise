@@ -17,6 +17,7 @@ const PEPPER = "integration-pepper";
 describe.skipIf(!databaseUrl)("GET /stations/cheapest (integration)", () => {
   let pool: Pool;
   let app: App;
+  let db: ReturnType<typeof createDb>;
 
   beforeAll(async () => {
     const config = parseConfig({
@@ -27,7 +28,7 @@ describe.skipIf(!databaseUrl)("GET /stations/cheapest (integration)", () => {
     });
 
     pool = new Pool({ connectionString: databaseUrl as string });
-    const db = createDb(pool);
+    db = createDb(pool);
     await migrate(db, { migrationsFolder: "drizzle" });
 
     await db.execute(sql`DELETE FROM stations WHERE id >= 900000`);
@@ -60,6 +61,7 @@ describe.skipIf(!databaseUrl)("GET /stations/cheapest (integration)", () => {
 
   afterAll(async () => {
     await app?.close();
+    await db?.execute(sql`DELETE FROM stations WHERE id >= 900000`).catch(() => undefined);
     await pool?.end();
   });
 

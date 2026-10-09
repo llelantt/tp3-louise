@@ -37,4 +37,4 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm run db:migrate
-      - run: npm test
+      - run: npm test -- --reporter=default --reporter=github-actions

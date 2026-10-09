@@ -33,6 +33,7 @@ describe.skipIf(!databaseUrl)("ingestion (integration)", () => {
   });
 
   afterAll(async () => {
+    await db?.execute(sql`DELETE FROM stations WHERE id >= 900000`).catch(() => undefined);
     await pool?.end();
   });
 
